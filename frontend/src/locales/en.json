@@ -1,0 +1,11 @@
+{
+  "contract.upload_cta": "Upload contract",
+  "risk.level.high": "High risk",
+  "risk.level.medium": "Medium risk",
+  "risk.level.low": "Low risk",
+  "letter.generate_button": "Generate objection letter",
+  "nav.login": "Login",
+  "nav.dashboard": "Dashboard",
+  "home.title": "Analyze your contracts with AI",
+  "home.subtitle": "Detect abusive clauses instantly and generate a legal objection letter."
+}

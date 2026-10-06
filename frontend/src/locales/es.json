@@ -1,0 +1,11 @@
+{
+  "contract.upload_cta": "Subir contrato",
+  "risk.level.high": "Riesgo alto",
+  "risk.level.medium": "Riesgo medio",
+  "risk.level.low": "Riesgo bajo",
+  "letter.generate_button": "Generar carta de objeción",
+  "nav.login": "Iniciar Sesión",
+  "nav.dashboard": "Panel",
+  "home.title": "Analiza tus contratos con IA",
+  "home.subtitle": "Detecta cláusulas abusivas al instante y genera una carta de objeción legal."
+}
