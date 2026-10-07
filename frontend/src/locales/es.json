@@ -1,11 +1,15 @@
 {
   "contract.upload_cta": "Subir contrato",
-  "risk.level.high": "Riesgo alto",
-  "risk.level.medium": "Riesgo medio",
-  "risk.level.low": "Riesgo bajo",
+  "contract.upload_hint": "PDF o Imágenes (max 10MB)",
+  "risk.level.high": "Alto riesgo",
   "letter.generate_button": "Generar carta de objeción",
-  "nav.login": "Iniciar Sesión",
-  "nav.dashboard": "Panel",
-  "home.title": "Analiza tus contratos con IA",
-  "home.subtitle": "Detecta cláusulas abusivas al instante y genera una carta de objeción legal."
+  "auth.login": "Iniciar Sesión",
+  "home.title": "Contratos Justos, Condiciones Claras",
+  "home.subtitle": "Detecta cláusulas abusivas instantáneamente con IA y genera cartas formales de objeción en segundos.",
+  "features.scan.title": "Escaneo Instantáneo",
+  "features.scan.desc": "Extrae texto de PDFs e imágenes automáticamente.",
+  "features.analyze.title": "Análisis con IA",
+  "features.analyze.desc": "Resalta cláusulas riesgosas con explicaciones en lenguaje claro.",
+  "features.protect.title": "Toma Acción",
+  "features.protect.desc": "Genera una carta de objeción formal lista para enviar."
 }

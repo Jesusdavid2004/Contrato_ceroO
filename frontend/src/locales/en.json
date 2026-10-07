@@ -1,11 +1,15 @@
 {
   "contract.upload_cta": "Upload contract",
+  "contract.upload_hint": "PDF or Images (max 10MB)",
   "risk.level.high": "High risk",
-  "risk.level.medium": "Medium risk",
-  "risk.level.low": "Low risk",
   "letter.generate_button": "Generate objection letter",
-  "nav.login": "Login",
-  "nav.dashboard": "Dashboard",
-  "home.title": "Analyze your contracts with AI",
-  "home.subtitle": "Detect abusive clauses instantly and generate a legal objection letter."
+  "auth.login": "Log In",
+  "home.title": "Fair Contracts, Clear Conditions",
+  "home.subtitle": "Detect abusive clauses instantly with AI and generate formal objection letters in seconds.",
+  "features.scan.title": "Instant Scan",
+  "features.scan.desc": "Extracts text from PDFs and images automatically.",
+  "features.analyze.title": "AI Analysis",
+  "features.analyze.desc": "Highlights risky clauses with plain-language explanations.",
+  "features.protect.title": "Take Action",
+  "features.protect.desc": "Generates a formal objection letter ready to send."
 }
