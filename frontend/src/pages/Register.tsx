@@ -2,9 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ShieldCheck, Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, ArrowRight, User } from 'lucide-react';
 
-export function Login() {
+export function Register() {
   const { t } = useTranslation();
   const [showPassword, setShowPassword] = useState(false);
 
@@ -17,24 +17,36 @@ export function Login() {
       >
         <div className="glass rounded-3xl p-8 space-y-6">
           <div className="flex flex-col items-center space-y-2 mb-4">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-2xl">
-              <ShieldCheck className="h-10 w-10 text-blue-600 dark:text-blue-400" />
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-900/40 rounded-2xl">
+              <User className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
             </div>
-            <h1 className="text-2xl font-bold">{t('auth.login_title', 'Welcome back')}</h1>
+            <h1 className="text-2xl font-bold">{t('auth.register_title', 'Create account')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
-              {t('auth.login_subtitle', 'Sign in to analyze your contracts')}
+              {t('auth.register_subtitle', 'Start protecting yourself from abusive contracts')}
             </p>
           </div>
 
           <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
             <div className="space-y-1">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                {t('auth.name', 'Full name')}
+              </label>
+              <input
+                id="register-name"
+                type="text"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 {t('auth.email', 'Email')}
               </label>
               <input
-                id="login-email"
+                id="register-email"
                 type="email"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 placeholder="you@example.com"
               />
             </div>
@@ -45,10 +57,10 @@ export function Login() {
               </label>
               <div className="relative">
                 <input
-                  id="login-password"
+                  id="register-password"
                   type={showPassword ? 'text' : 'password'}
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-12"
-                  placeholder="••••••••"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all pr-12"
+                  placeholder="min. 8 characters"
                 />
                 <button
                   type="button"
@@ -61,19 +73,19 @@ export function Login() {
             </div>
 
             <button
-              id="login-submit"
+              id="register-submit"
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-blue-500/25 hover:scale-[1.02] flex items-center justify-center space-x-2"
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/25 hover:scale-[1.02] flex items-center justify-center space-x-2"
             >
-              <span>{t('auth.login', 'Log In')}</span>
+              <span>{t('auth.register_button', 'Create account')}</span>
               <ArrowRight className="h-5 w-5" />
             </button>
           </form>
 
           <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-            {t('auth.no_account', "Don't have an account?")}{' '}
-            <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-              {t('auth.register_link', 'Sign up free')}
+            {t('auth.have_account', 'Already have an account?')}{' '}
+            <Link to="/login" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">
+              {t('auth.login_link', 'Sign in')}
             </Link>
           </p>
         </div>
