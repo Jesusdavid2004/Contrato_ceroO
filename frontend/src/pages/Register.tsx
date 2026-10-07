@@ -1,12 +1,29 @@
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ShieldCheck, Eye, EyeOff, ArrowRight, User } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { User, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 export function Register() {
   const { t } = useTranslation();
+  const { register, isLoading, error, clearError } = useAuth();
+  const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    clearError();
+    try {
+      await register(name, email, password);
+      navigate('/', { replace: true });
+    } catch {
+      // error is set in context
+    }
+  };
 
   return (
     <div className="min-h-[85vh] flex items-center justify-center">
@@ -16,7 +33,7 @@ export function Register() {
         className="w-full max-w-md"
       >
         <div className="glass rounded-3xl p-8 space-y-6">
-          <div className="flex flex-col items-center space-y-2 mb-4">
+          <div className="flex flex-col items-center space-y-2 mb-2">
             <div className="p-3 bg-indigo-100 dark:bg-indigo-900/40 rounded-2xl">
               <User className="h-10 w-10 text-indigo-600 dark:text-indigo-400" />
             </div>
@@ -26,7 +43,18 @@ export function Register() {
             </p>
           </div>
 
-          <form className="space-y-4" onSubmit={(e) => e.preventDefault()}>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm"
+            >
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+            </motion.div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSubmit}>
             <div className="space-y-1">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
                 {t('auth.name', 'Full name')}
@@ -34,6 +62,9 @@ export function Register() {
               <input
                 id="register-name"
                 type="text"
+                value={name}
+                onChange={e => setName(e.target.value)}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 placeholder="John Doe"
               />
@@ -46,6 +77,9 @@ export function Register() {
               <input
                 id="register-email"
                 type="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                required
                 className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
                 placeholder="you@example.com"
               />
@@ -59,8 +93,12 @@ export function Register() {
                 <input
                   id="register-password"
                   type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  minLength={8}
                   className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all pr-12"
-                  placeholder="min. 8 characters"
+                  placeholder={t('auth.password_hint', 'min. 8 characters')}
                 />
                 <button
                   type="button"
@@ -75,10 +113,14 @@ export function Register() {
             <button
               id="register-submit"
               type="submit"
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/25 hover:scale-[1.02] flex items-center justify-center space-x-2"
+              disabled={isLoading}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-indigo-500/25 hover:scale-[1.02] flex items-center justify-center space-x-2"
             >
-              <span>{t('auth.register_button', 'Create account')}</span>
-              <ArrowRight className="h-5 w-5" />
+              {isLoading ? (
+                <><Loader2 className="h-5 w-5 animate-spin" /><span>{t('auth.creating', 'Creating account...')}</span></>
+              ) : (
+                <><span>{t('auth.register_button', 'Create account')}</span><ArrowRight className="h-5 w-5" /></>
+              )}
             </button>
           </form>
 
