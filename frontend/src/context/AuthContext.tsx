@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('cc_token');
         setToken(null);
       });
-  }, []);
+  }, [token]);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);

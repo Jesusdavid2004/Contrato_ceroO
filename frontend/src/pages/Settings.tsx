@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Globe, Moon, Sun, Bell, Trash2, ChevronRight } from 'lucide-react';
+import { Globe, Moon, Sun, Bell, Trash2, ChevronRight } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme';
 
 export function Settings() {
