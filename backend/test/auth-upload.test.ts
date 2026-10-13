@@ -64,7 +64,7 @@ describe('Auth Hardening & Upload Pipeline (Phase 3)', () => {
       tokenA = res.body.accessToken;
 
       // Verify Set-Cookie header for cc_refresh_token
-      const cookies = res.headers['set-cookie'];
+      const cookies = res.headers['set-cookie'] as unknown as string[] | undefined;
       expect(cookies).toBeDefined();
       const refreshCookie = cookies?.find((c: string) => c.startsWith('cc_refresh_token='));
       expect(refreshCookie).toBeDefined();
@@ -106,7 +106,7 @@ describe('Auth Hardening & Upload Pipeline (Phase 3)', () => {
     it('POST /api/v1/auth/logout clears refresh cookie', async () => {
       const res = await request(app).post('/api/v1/auth/logout');
       expect(res.status).toBe(200);
-      const cookies = res.headers['set-cookie'];
+      const cookies = res.headers['set-cookie'] as unknown as string[] | undefined;
       expect(cookies).toBeDefined();
       const clearedCookie = cookies?.find((c: string) => c.startsWith('cc_refresh_token=;'));
       expect(clearedCookie).toBeDefined();

@@ -314,11 +314,11 @@ describe('AnthropicAIProvider', () => {
         cache_creation_input_tokens: null,
         cache_read_input_tokens: null,
       },
-    });
-    const createMessage = vi.spyOn(client.messages, 'create').mockImplementation(async () => {
+    }) as unknown as Anthropic.Messages.Message;
+    const createMessage = vi.spyOn(client.messages, 'create').mockImplementation((async () => {
       requestCount += 1;
       return response(requestCount === 1 ? 'urgent' : 'high');
-    });
+    }) as never);
     const provider = new AnthropicAIProvider(client, {
       fastModel: 'fast-test',
       smartModel: 'smart-test',
@@ -375,13 +375,13 @@ describe('AnthropicAIProvider', () => {
         cache_creation_input_tokens: null,
         cache_read_input_tokens: null,
       },
-    });
-    const createMessage = vi.spyOn(client.messages, 'create').mockImplementation(async () => {
+    }) as unknown as Anthropic.Messages.Message;
+    const createMessage = vi.spyOn(client.messages, 'create').mockImplementation((async () => {
       requestCount += 1;
       return response(requestCount === 1
         ? 'Estimado/a: Solicito cambiar la cláusula.'
         : 'Estimado/a [DESTINATARIO]: revisar [REFERENCIA DEL CONTRATO]. [SU NOMBRE] [FECHA]');
-    });
+    }) as never);
     const provider = new AnthropicAIProvider(client, {
       fastModel: 'fast-test',
       smartModel: 'smart-test',

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
-// @ts-expect-error legacy commonjs module
 import app from '../index.js';
 
 describe('Legacy Backend Characterization Tests', () => {
