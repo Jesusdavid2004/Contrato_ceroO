@@ -20,6 +20,21 @@ interface ContractResponse {
   clauses: ContractClauseResponse[];
 }
 
+export interface ContractAnalysisResult {
+  id: string;
+  status: string;
+  global_risk_score: number;
+  clauses: ContractClauseResponse[];
+}
+
+export interface ObjectionLetterResponse {
+  id: string;
+  contract_id: string;
+  locale: string;
+  content: string;
+  created_at: string;
+}
+
 interface ContractStatusResponse {
   status: string;
   failure_message_key: string | null;
@@ -192,4 +207,93 @@ export async function uploadAndAnalyzeContract(
     }
   }
   throw new ContractApiError('errors.analysis_timeout');
+}
+
+function parseObjectionLetter(value: unknown): ObjectionLetterResponse {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.contract_id !== 'string' ||
+    typeof value.locale !== 'string' ||
+    typeof value.content !== 'string' ||
+    typeof value.created_at !== 'string'
+  ) {
+    throw new ContractApiError('errors.api_error');
+  }
+  return {
+    id: value.id,
+    contract_id: value.contract_id,
+    locale: value.locale,
+    content: value.content,
+    created_at: value.created_at,
+  };
+}
+
+export async function generateObjectionLetter(
+  contractId: string,
+  token: string,
+): Promise<ObjectionLetterResponse> {
+  const response = await requestJson(
+    `${API_URL}/api/contracts/${encodeURIComponent(contractId)}/letter`,
+    token,
+    { method: 'POST' },
+  );
+  const letter = parseObjectionLetter(response);
+  if (letter.contract_id !== contractId) throw new ContractApiError('errors.api_error');
+  return letter;
+}
+
+export async function updateObjectionLetter(
+  contractId: string,
+  content: string,
+  token: string,
+): Promise<ObjectionLetterResponse> {
+  const response = await requestJson(
+    `${API_URL}/api/contracts/${encodeURIComponent(contractId)}/letter`,
+    token,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content }),
+    },
+  );
+  const letter = parseObjectionLetter(response);
+  if (letter.contract_id !== contractId) throw new ContractApiError('errors.api_error');
+  return letter;
+}
+
+export async function downloadObjectionLetterPdf(
+  contractId: string,
+  token: string,
+): Promise<Blob> {
+  const response = await fetch(
+    `${API_URL}/api/contracts/${encodeURIComponent(contractId)}/letter/pdf`,
+    { headers: { Authorization: 'Bearer ' + token } },
+  );
+  if (!response.ok) {
+    throw new ContractApiError(getErrorKey(await readJson(response)));
+  }
+  const blob = await response.blob();
+  if (blob.type !== 'application/pdf') {
+    throw new ContractApiError('errors.api_error');
+  }
+  return blob;
+}
+
+export function isContractAnalysisResult(value: unknown): value is ContractAnalysisResult {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.status !== 'string' ||
+    typeof value.global_risk_score !== 'number' ||
+    !Array.isArray(value.clauses)
+  ) {
+    return false;
+  }
+  try {
+    parseContract(value);
+    return true;
+  } catch {
+    return false;
+  }
 }

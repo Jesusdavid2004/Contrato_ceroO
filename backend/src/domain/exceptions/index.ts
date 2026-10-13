@@ -75,6 +75,16 @@ export class ObjectionLetterNotFoundError extends DomainError {
   }
 }
 
+export class ObjectionLetterContentInvalidError extends DomainError {
+  constructor() {
+    super(
+      'Objection letter content must be non-empty and no longer than 350 words.',
+      'errors.objection_letter_invalid',
+      422,
+    );
+  }
+}
+
 export class NoFlaggedClausesError extends DomainError {
   constructor() {
     super(

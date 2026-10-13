@@ -33,6 +33,7 @@ import { AnalyzeContractUseCase } from './application/use-cases/AnalyzeContractU
 import { GenerateObjectionLetterUseCase } from './application/use-cases/GenerateObjectionLetterUseCase';
 import { DownloadObjectionLetterPdfUseCase } from './application/use-cases/DownloadObjectionLetterPdfUseCase';
 import { PdfKitGenerator } from './infrastructure/services/PdfKitGenerator';
+import { UpdateObjectionLetterUseCase } from './application/use-cases/UpdateObjectionLetterUseCase';
 
 // Routes
 import { createAuthRouter } from './presentation/routes/authRoutes';
@@ -112,6 +113,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     contractRepository,
     new PdfKitGenerator(),
   );
+  const updateObjectionLetterUseCase = new UpdateObjectionLetterUseCase(contractRepository);
 
   // Health probe
   app.get(['/health', '/api/health'], (_req, res) => {
@@ -132,6 +134,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     analysisWorker,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
+    updateObjectionLetterUseCase,
   });
 
   // Versioned v1 routes

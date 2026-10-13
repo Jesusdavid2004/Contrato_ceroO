@@ -9,6 +9,7 @@ import type { InProcessAnalysisWorker } from '../../infrastructure/services/InPr
 import { FileValidator } from '../../infrastructure/services/FileValidator';
 import type { GenerateObjectionLetterUseCase } from '../../application/use-cases/GenerateObjectionLetterUseCase';
 import type { DownloadObjectionLetterPdfUseCase } from '../../application/use-cases/DownloadObjectionLetterPdfUseCase';
+import type { UpdateObjectionLetterUseCase } from '../../application/use-cases/UpdateObjectionLetterUseCase';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -21,6 +22,7 @@ export function createContractRouter(deps: {
   analysisWorker?: InProcessAnalysisWorker;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
+  updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
 }): Router {
   const router = Router();
 
@@ -171,6 +173,19 @@ export function createContractRouter(deps: {
         .type('application/pdf')
         .attachment(`${filename}.pdf`)
         .send(pdf.buffer);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.put('/:id/letter', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const letter = await deps.updateObjectionLetterUseCase.execute({
+        contractId: String(req.params.id),
+        userId: req.user!.id,
+        content: typeof req.body?.content === 'string' ? req.body.content : '',
+      });
+      res.status(200).json(letter.toJSON());
     } catch (err) {
       next(err);
     }

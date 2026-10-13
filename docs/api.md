@@ -36,3 +36,13 @@ is not called.
 Returns the latest persisted letter as a localized PDF attachment with
 `Content-Type: application/pdf`. This route does not invoke the AI provider.
 It returns `404` when no letter has been generated for the contract.
+
+## Save edited objection letter
+
+`PUT /:id/letter`
+
+Persists user edits to the latest generated letter without invoking AI. The
+contract and an existing generated letter must belong to the authenticated
+user. The body is `{ "content": "..." }`; content must be non-empty and no
+longer than 350 words. The response uses the same shape as the generation
+response. Subsequent PDF downloads use the saved edits.

@@ -20,7 +20,7 @@ export function Navbar() {
   const toggleLanguage = () => {
     const newLang = i18n.language.startsWith('en') ? 'es' : 'en';
     i18n.changeLanguage(newLang);
-    localStorage.setItem('cc_locale', newLang);
+    localStorage.setItem('lang', newLang);
   };
 
   const handleLogout = () => {

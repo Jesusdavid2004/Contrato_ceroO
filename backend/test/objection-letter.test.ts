@@ -4,11 +4,16 @@ import express from 'express';
 import request from 'supertest';
 import { GenerateObjectionLetterUseCase } from '../src/application/use-cases/GenerateObjectionLetterUseCase';
 import { DownloadObjectionLetterPdfUseCase } from '../src/application/use-cases/DownloadObjectionLetterPdfUseCase';
+import { UpdateObjectionLetterUseCase } from '../src/application/use-cases/UpdateObjectionLetterUseCase';
 import { Clause } from '../src/domain/entities/Clause';
 import { Contract } from '../src/domain/entities/Contract';
 import { InMemoryContractRepository } from '../src/infrastructure/repositories/ContractRepositoryImpl';
 import { PdfKitGenerator } from '../src/infrastructure/services/PdfKitGenerator';
-import { ContractOwnershipError, NoFlaggedClausesError } from '../src/domain/exceptions/index';
+import {
+  ContractOwnershipError,
+  NoFlaggedClausesError,
+  ObjectionLetterContentInvalidError,
+} from '../src/domain/exceptions/index';
 import type { AIProvider, ObjectionLetterRequest } from '../src/domain/services/AIProvider';
 import { createContractRouter } from '../src/presentation/routes/contractRoutes';
 import { UploadContractUseCase } from '../src/application/use-cases/UploadContractUseCase';
@@ -121,6 +126,71 @@ describe('Objection letter PDF', () => {
     parser = undefined;
   });
 
+  describe('UpdateObjectionLetterUseCase', () => {
+    it('saves edited content for the contract owner without calling AI', async () => {
+      const repository = new InMemoryContractRepository();
+      await repository.save(createContract());
+      const { provider, generateObjectionLetter } = createProvider('Generated letter');
+      await new GenerateObjectionLetterUseCase(repository, provider).execute({
+        contractId: CONTRACT_ID,
+        userId: OWNER_ID,
+      });
+
+      const useCase = new UpdateObjectionLetterUseCase(
+        repository,
+        () => new Date('2026-10-14T12:00:00.000Z'),
+      );
+      const updated = await useCase.execute({
+        contractId: CONTRACT_ID,
+        userId: OWNER_ID,
+        content: '  Edited letter with completed recipient and date.  ',
+      });
+
+      expect(updated.content).toBe('Edited letter with completed recipient and date.');
+      expect(updated.locale).toBe('es');
+      expect(await repository.getObjectionLetter(CONTRACT_ID)).toBe(updated);
+      expect(generateObjectionLetter).toHaveBeenCalledOnce();
+    });
+
+    it('rejects empty or over-limit edits', async () => {
+      const repository = new InMemoryContractRepository();
+      await repository.save(createContract());
+      const { provider } = createProvider('Generated letter');
+      await new GenerateObjectionLetterUseCase(repository, provider).execute({
+        contractId: CONTRACT_ID,
+        userId: OWNER_ID,
+      });
+      const useCase = new UpdateObjectionLetterUseCase(repository);
+
+      await expect(useCase.execute({
+        contractId: CONTRACT_ID,
+        userId: OWNER_ID,
+        content: '  ',
+      })).rejects.toBeInstanceOf(ObjectionLetterContentInvalidError);
+      await expect(useCase.execute({
+        contractId: CONTRACT_ID,
+        userId: OWNER_ID,
+        content: Array.from({ length: 351 }, () => 'word').join(' '),
+      })).rejects.toBeInstanceOf(ObjectionLetterContentInvalidError);
+    });
+
+    it('denies edits from a user who does not own the contract', async () => {
+      const repository = new InMemoryContractRepository();
+      await repository.save(createContract());
+      const { provider } = createProvider('Generated letter');
+      await new GenerateObjectionLetterUseCase(repository, provider).execute({
+        contractId: CONTRACT_ID,
+        userId: OWNER_ID,
+      });
+
+      await expect(new UpdateObjectionLetterUseCase(repository).execute({
+        contractId: CONTRACT_ID,
+        userId: 'other-user',
+        content: 'Edited content',
+      })).rejects.toBeInstanceOf(ContractOwnershipError);
+    });
+  });
+
   it('downloads the persisted letter as a readable Spanish PDF', async () => {
     const repository = new InMemoryContractRepository();
     await repository.save(createContract());
@@ -152,6 +222,7 @@ describe('Objection letter PDF', () => {
     const content = 'Estimado/a [DESTINATARIO]:\nSolicito revisar la cláusula.';
     const { provider, generateObjectionLetter } = createProvider(content);
     const app = express();
+    app.use(express.json());
     app.use('/contracts', createContractRouter({
       contractRepository: repository,
       uploadContractUseCase: new UploadContractUseCase(repository, {
@@ -164,6 +235,7 @@ describe('Objection letter PDF', () => {
         repository,
         new PdfKitGenerator(),
       ),
+      updateObjectionLetterUseCase: new UpdateObjectionLetterUseCase(repository),
     }));
     app.use(errorHandler);
     const { accessToken } = TokenService.generateTokens({
@@ -188,6 +260,24 @@ describe('Objection letter PDF', () => {
     expect(downloaded.headers['content-type']).toContain('application/pdf');
     expect(downloaded.headers['content-disposition']).toContain('arrendamiento-de-vivienda.pdf');
     expect(downloaded.body.subarray(0, 5).toString()).toBe('%PDF-');
+    const edited = await request(app)
+      .put(`/contracts/${CONTRACT_ID}/letter`)
+      .set('Authorization', 'Bearer ' + accessToken)
+      .send({ content: 'Carta revisada por la persona usuaria.' });
+    expect(edited.status).toBe(200);
+    expect(edited.body.content).toBe('Carta revisada por la persona usuaria.');
+
+    const downloadedEditedLetter = await request(app)
+      .get(`/contracts/${CONTRACT_ID}/letter/pdf`)
+      .set('Authorization', 'Bearer ' + accessToken);
+    expect(downloadedEditedLetter.status).toBe(200);
+    expect(downloadedEditedLetter.body.subarray(0, 5).toString()).toBe('%PDF-');
+    parser = new PDFParse({
+      data: new Uint8Array(downloadedEditedLetter.body),
+      verbosity: VerbosityLevel.ERRORS,
+    });
+    const editedPdfText = await parser.getText();
+    expect(editedPdfText.text).toContain('Carta revisada por la persona usuaria.');
     expect(generateObjectionLetter).toHaveBeenCalledOnce();
   });
 });

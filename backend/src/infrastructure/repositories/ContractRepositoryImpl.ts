@@ -166,7 +166,7 @@ export class PostgresContractRepository implements ContractRepository {
   public async getObjectionLetter(contractId: string): Promise<ObjectionLetter | null> {
     const res = await this.pool.query(
       `SELECT id, contract_id, locale, content, created_at
-       FROM objection_letters WHERE contract_id = $1 ORDER BY created_at DESC LIMIT 1`,
+       FROM objection_letters WHERE contract_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1`,
       [contractId],
     );
     if (res.rows.length === 0) return null;
