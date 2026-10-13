@@ -63,6 +63,26 @@ Required application settings:
 | `RAG_ENABLED` | `false` by default; enable only after legal corpus and pgvector readiness review |
 | `EMBEDDING_CACHE_DIR` | Writable persistent cache if RAG is enabled |
 
+### Free Tier: Render + Neon
+
+[render.yaml](../render.yaml) defines the backend (Docker web service) and the
+frontend (static site that rewrites `/api/*` to the backend). Steps:
+
+1. In Neon, create a project (PostgreSQL 15+) and copy the **direct**
+   (non-pooled) connection string; it must include `sslmode=require`. The
+   migrations run `CREATE EXTENSION vector`, which Neon supports.
+2. In Render, choose New > Blueprint and select this repository.
+3. Set the prompted secrets on `contratoclaro-api`: `DATABASE_URL` (Neon),
+   `ANTHROPIC_API_KEY`, and `CORS_ORIGIN` (the HTTPS URL of `contratoclaro-web`).
+   `JWT_SECRET` is generated automatically.
+4. If Render adds a suffix to the service name, update the rewrite destination
+   in `render.yaml` to the real backend URL and redeploy the frontend.
+5. Verify `https://<api>/ready` returns 200 and register a user from the site.
+
+Limits: the free backend sleeps after inactivity (the first request can take
+about 30 seconds), has 512 MB RAM (so keep `RAG_ENABLED=false`), and the
+in-process worker requires a single instance. Migrations run on each start.
+
 ### Release Procedure
 
 1. Build and scan the backend and frontend images in CI. Use immutable image
