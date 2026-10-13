@@ -3,10 +3,12 @@ import multer from 'multer';
 import type { UploadContractUseCase } from '../../application/use-cases/UploadContractUseCase';
 import type { ContractRepository } from '../../domain/repositories/ContractRepository';
 import { requireAuth } from '../middleware/authMiddleware';
-import { uploadLimiter } from '../middleware/rateLimiter';
+import { aiIpLimiter, aiUserLimiter, uploadLimiter } from '../middleware/rateLimiter';
 import { ContractNotFoundError, ContractOwnershipError } from '../../domain/exceptions/index';
 import type { InProcessAnalysisWorker } from '../../infrastructure/services/InProcessAnalysisWorker';
 import { FileValidator } from '../../infrastructure/services/FileValidator';
+import type { GenerateObjectionLetterUseCase } from '../../application/use-cases/GenerateObjectionLetterUseCase';
+import type { DownloadObjectionLetterPdfUseCase } from '../../application/use-cases/DownloadObjectionLetterPdfUseCase';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -17,6 +19,8 @@ export function createContractRouter(deps: {
   uploadContractUseCase: UploadContractUseCase;
   contractRepository: ContractRepository;
   analysisWorker?: InProcessAnalysisWorker;
+  generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
+  downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
 }): Router {
   const router = Router();
 
@@ -126,6 +130,47 @@ export function createContractRouter(deps: {
 
       await deps.contractRepository.delete(contractId);
       res.status(200).json({ message: 'Contract deleted' });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  router.post(
+    '/:id/letter',
+    requireAuth,
+    aiIpLimiter,
+    aiUserLimiter,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const letter = await deps.generateObjectionLetterUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+        });
+        res.status(201).json(letter.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  router.get('/:id/letter/pdf', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const pdf = await deps.downloadObjectionLetterPdfUseCase.execute({
+        contractId: String(req.params.id),
+        userId: req.user!.id,
+      });
+      const filename = pdf.contractTitle
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9_-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 80)
+        .toLowerCase() || 'objection-letter';
+      res
+        .status(200)
+        .type('application/pdf')
+        .attachment(`${filename}.pdf`)
+        .send(pdf.buffer);
     } catch (err) {
       next(err);
     }

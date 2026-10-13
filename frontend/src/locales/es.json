@@ -57,5 +57,8 @@
   "errors.unsupported_file_type": "Sube un archivo PDF, PNG o JPEG.",
   "errors.ai_provider_unavailable": "El análisis de contratos no está disponible temporalmente.",
   "errors.ai_response_invalid": "No se pudo validar la respuesta del análisis.",
+  "errors.contract_not_ready": "Espera a que termine el análisis antes de generar una carta.",
+  "errors.no_flagged_clauses": "No se encontraron cláusulas de riesgo medio o alto para objetar.",
+  "errors.objection_letter_not_found": "Genera una carta de objeción antes de descargar el PDF.",
   "errors.api_error": "No se pudo completar la solicitud."
 }

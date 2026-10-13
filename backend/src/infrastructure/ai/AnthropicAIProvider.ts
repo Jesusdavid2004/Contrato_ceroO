@@ -28,6 +28,11 @@ import {
 const MAX_CLAUSES_PER_BATCH = 8;
 const MAX_LETTER_TOKENS = 2048;
 const MAX_VALIDATION_ATTEMPTS = 2;
+const MAX_LETTER_WORDS = 350;
+const LETTER_PLACEHOLDERS: Record<'en' | 'es', string[]> = {
+  en: ['[YOUR NAME]', '[RECIPIENT]', '[DATE]', '[CONTRACT REFERENCE]'],
+  es: ['[SU NOMBRE]', '[DESTINATARIO]', '[FECHA]', '[REFERENCIA DEL CONTRATO]'],
+};
 
 const classificationTool = {
   name: 'classify_contract_clauses',
@@ -191,25 +196,27 @@ export class AnthropicAIProvider implements AIProvider {
     }
 
     const filteredRequest = { ...request, flaggedClauses };
-    const response = await this.createMessage(
-      this.options.smartModel,
-      MAX_LETTER_TOKENS,
-      buildObjectionLetterSystemPrompt(this.getLocaleName(request.locale)),
-      [{ role: 'user', content: buildObjectionLetterUserPrompt({
-        ...filteredRequest,
-        localeName: this.getLocaleName(request.locale),
-      }) }],
-    );
-    const letter = response.content
-      .filter((block) => block.type === 'text')
-      .map((block) => block.text)
-      .join('\n')
-      .trim();
-
-    if (!letter || letter.split(/\s+/).length > 350) {
-      throw new AIResponseInvalidError({ reason: 'The AI provider returned an empty or oversized letter.' });
+    let feedback: string | undefined;
+    for (let attempt = 0; attempt < MAX_VALIDATION_ATTEMPTS; attempt += 1) {
+      const response = await this.createMessage(
+        this.options.smartModel,
+        MAX_LETTER_TOKENS,
+        buildObjectionLetterSystemPrompt(this.getLocaleName(request.locale)),
+        [{ role: 'user', content: buildObjectionLetterUserPrompt({
+          ...filteredRequest,
+          localeName: this.getLocaleName(request.locale),
+        }, feedback) }],
+      );
+      const letter = response.content
+        .filter((block) => block.type === 'text')
+        .map((block) => block.text)
+        .join('\n')
+        .trim();
+      const validationErrors = this.getLetterValidationErrors(letter, request.locale);
+      if (validationErrors.length === 0) return letter;
+      feedback = validationErrors.join(' ');
     }
-    return letter;
+    throw new AIResponseInvalidError({ reason: 'The AI response remained invalid after one retry.' });
   }
 
   private async createMessage(
@@ -266,5 +273,21 @@ export class AnthropicAIProvider implements AIProvider {
 
   private getLocaleName(locale: string): string {
     return locale.toLowerCase().startsWith('es') ? 'Spanish' : 'English';
+  }
+
+  private getLetterValidationErrors(letter: string, locale: string): string[] {
+    const errors: string[] = [];
+    if (!letter) errors.push('Return a non-empty letter.');
+    if (letter.split(/\s+/).length > MAX_LETTER_WORDS) {
+      errors.push(`Keep the letter within ${MAX_LETTER_WORDS} words.`);
+    }
+    const placeholders = locale.toLowerCase().startsWith('es')
+      ? LETTER_PLACEHOLDERS.es
+      : LETTER_PLACEHOLDERS.en;
+    const missingPlaceholders = placeholders.filter((placeholder) => !letter.includes(placeholder));
+    if (missingPlaceholders.length > 0) {
+      errors.push(`Include each required placeholder exactly as provided: ${missingPlaceholders.join(', ')}.`);
+    }
+    return errors;
   }
 }

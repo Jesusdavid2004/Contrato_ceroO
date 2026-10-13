@@ -21,6 +21,7 @@ export function buildObjectionLetterSystemPrompt(localeName: string): string {
 
 export function buildObjectionLetterUserPrompt(
   request: ObjectionLetterPromptInput,
+  feedback?: string,
 ): string {
   const clauses = request.flaggedClauses.map((clause, index) => {
     const delimiter = `untrusted_analysis_${randomUUID().replace(/-/g, '')}`;
@@ -41,5 +42,6 @@ export function buildObjectionLetterUserPrompt(
     `jurisdiction: ${request.jurisdiction}`,
     `locale: ${request.locale}`,
     ...clauses,
+    ...(feedback ? [`validation_feedback: ${feedback}`] : []),
   ].join('\n\n');
 }

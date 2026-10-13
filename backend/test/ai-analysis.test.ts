@@ -357,4 +357,55 @@ describe('AnthropicAIProvider', () => {
     expect(result.usage.inputTokens).toBe(10);
     expect(result.usage.outputTokens).toBe(14);
   });
+
+  it('retries a letter missing localized placeholders before accepting the result', async () => {
+    const client = new Anthropic({ apiKey: 'test-key' });
+    let requestCount = 0;
+    const response = (text: string): Anthropic.Messages.Message => ({
+      id: `letter-${requestCount}`,
+      type: 'message',
+      role: 'assistant',
+      model: 'test-model',
+      stop_reason: 'end_turn',
+      stop_sequence: null,
+      content: [{ type: 'text', text }],
+      usage: {
+        input_tokens: 5,
+        output_tokens: 7,
+        cache_creation_input_tokens: null,
+        cache_read_input_tokens: null,
+      },
+    });
+    const createMessage = vi.spyOn(client.messages, 'create').mockImplementation(async () => {
+      requestCount += 1;
+      return response(requestCount === 1
+        ? 'Estimado/a: Solicito cambiar la cláusula.'
+        : 'Estimado/a [DESTINATARIO]: revisar [REFERENCIA DEL CONTRATO]. [SU NOMBRE] [FECHA]');
+    });
+    const provider = new AnthropicAIProvider(client, {
+      fastModel: 'fast-test',
+      smartModel: 'smart-test',
+      maxTokens: 1024,
+      timeoutMs: 1000,
+    });
+
+    const letter = await provider.generateObjectionLetter({
+      contractType: 'LEASE',
+      jurisdiction: 'CO',
+      locale: 'es',
+      flaggedClauses: [{
+        id: 'clause-1',
+        text: 'The landlord can change terms.',
+        riskLevel: 'high',
+        plainExplanation: 'A unilateral change is possible.',
+        whyRisky: 'Only one party controls changes.',
+        legalBasis: [],
+        suggestedChange: 'Require mutual consent.',
+      }],
+    });
+
+    expect(createMessage).toHaveBeenCalledTimes(2);
+    expect(createMessage.mock.calls[1][0].messages[0].content).toContain('validation_feedback');
+    expect(letter).toContain('[DESTINATARIO]');
+  });
 });

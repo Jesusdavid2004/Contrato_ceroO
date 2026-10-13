@@ -30,6 +30,9 @@ import { RegisterUserUseCase, LoginUseCase } from './application/use-cases/AuthU
 import { RefreshSessionUseCase, DeleteAccountUseCase } from './application/use-cases/SessionUseCases';
 import { UploadContractUseCase } from './application/use-cases/UploadContractUseCase';
 import { AnalyzeContractUseCase } from './application/use-cases/AnalyzeContractUseCase';
+import { GenerateObjectionLetterUseCase } from './application/use-cases/GenerateObjectionLetterUseCase';
+import { DownloadObjectionLetterPdfUseCase } from './application/use-cases/DownloadObjectionLetterPdfUseCase';
+import { PdfKitGenerator } from './infrastructure/services/PdfKitGenerator';
 
 // Routes
 import { createAuthRouter } from './presentation/routes/authRoutes';
@@ -101,6 +104,14 @@ export function createApp(options?: { inMemory?: boolean }) {
   const refreshSessionUseCase = new RefreshSessionUseCase(userRepository);
   const deleteAccountUseCase = new DeleteAccountUseCase(userRepository, contractRepository, fileStorage);
   const uploadContractUseCase = new UploadContractUseCase(contractRepository, fileStorage);
+  const generateObjectionLetterUseCase = new GenerateObjectionLetterUseCase(
+    contractRepository,
+    aiProvider,
+  );
+  const downloadObjectionLetterPdfUseCase = new DownloadObjectionLetterPdfUseCase(
+    contractRepository,
+    new PdfKitGenerator(),
+  );
 
   // Health probe
   app.get(['/health', '/api/health'], (_req, res) => {
@@ -119,6 +130,8 @@ export function createApp(options?: { inMemory?: boolean }) {
     uploadContractUseCase,
     contractRepository,
     analysisWorker,
+    generateObjectionLetterUseCase,
+    downloadObjectionLetterPdfUseCase,
   });
 
   // Versioned v1 routes

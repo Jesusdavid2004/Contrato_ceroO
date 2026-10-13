@@ -57,5 +57,8 @@
   "errors.unsupported_file_type": "Upload a PDF, PNG, or JPEG file.",
   "errors.ai_provider_unavailable": "Contract analysis is temporarily unavailable.",
   "errors.ai_response_invalid": "The analysis response could not be validated.",
+  "errors.contract_not_ready": "Wait for contract analysis to finish before generating a letter.",
+  "errors.no_flagged_clauses": "No medium- or high-risk clauses were found for an objection letter.",
+  "errors.objection_letter_not_found": "Generate an objection letter before downloading its PDF.",
   "errors.api_error": "The request could not be completed."
 }

@@ -53,6 +53,28 @@ export class ContractOwnershipError extends DomainError {
   }
 }
 
+export class ContractNotReadyError extends DomainError {
+  constructor(contractId: string) {
+    super(
+      `Contract is not ready for letter generation: ${contractId}`,
+      'errors.contract_not_ready',
+      409,
+      { contractId },
+    );
+  }
+}
+
+export class ObjectionLetterNotFoundError extends DomainError {
+  constructor(contractId: string) {
+    super(
+      `No objection letter exists for contract: ${contractId}`,
+      'errors.objection_letter_not_found',
+      404,
+      { contractId },
+    );
+  }
+}
+
 export class NoFlaggedClausesError extends DomainError {
   constructor() {
     super(
