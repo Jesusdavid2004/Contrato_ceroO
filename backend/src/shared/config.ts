@@ -55,6 +55,20 @@ const envSchema = z.object({
       message: 'CORS_ORIGIN must be explicitly configured in production.',
     });
   }
+  if (!environment.ANTHROPIC_API_KEY) {
+    context.addIssue({
+      code: 'custom',
+      path: ['ANTHROPIC_API_KEY'],
+      message: 'ANTHROPIC_API_KEY must be configured in production; the demo provider is not suitable for live analysis.',
+    });
+  }
+  if (environment.CONTRACT_FILE_RETENTION !== 'none') {
+    context.addIssue({
+      code: 'custom',
+      path: ['CONTRACT_FILE_RETENTION'],
+      message: 'Production file retention is unavailable until encrypted private object storage is configured. Set CONTRACT_FILE_RETENTION=none.',
+    });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);

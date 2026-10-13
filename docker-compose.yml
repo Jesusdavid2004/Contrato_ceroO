@@ -1,15 +1,10 @@
-version: '3.8'
-
 services:
   db:
     image: pgvector/pgvector:pg15
-    container_name: contratoclaro_db
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local-only-change-this-password}
       POSTGRES_DB: contratoclaro
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -22,37 +17,51 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: contratoclaro_backend
     environment:
       PORT: 3001
-      NODE_ENV: development
+      NODE_ENV: ${NODE_ENV:-development}
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: postgres
-      DB_PASSWORD: password
+      DB_PASSWORD: ${DB_PASSWORD:-local-only-change-this-password}
       DB_NAME: contratoclaro
       RAG_ENABLED: ${RAG_ENABLED:-false}
       EMBEDDING_CACHE_DIR: /app/storage/models
-      DATABASE_URL: postgresql://postgres:password@db:5432/contratoclaro
-      JWT_SECRET: dev-secret-change-in-prod
-      CORS_ORIGIN: http://localhost
+      JWT_SECRET: ${JWT_SECRET:-local-only-change-this-secret}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+      CONTRACT_FILE_RETENTION: ${CONTRACT_FILE_RETENTION:-none}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-}
+      DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-}
     ports:
-      - "3001:3001"
+      - "127.0.0.1:3001:3001"
     depends_on:
       db:
         condition: service_healthy
     volumes:
       - embedding-models:/app/storage/models
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/ready').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 30s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: contratoclaro_frontend
     ports:
-      - "80:80"
+      - "127.0.0.1:8080:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1/ || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
 
 volumes:
   pgdata:

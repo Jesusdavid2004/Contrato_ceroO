@@ -1,8 +1,49 @@
-# API additions: objection letters
+# ContratoClaro API
 
-All routes require an access token in the `Authorization: Bearer <token>`
-header. The paths are available under `/api/v1/contracts` and the legacy
-`/api/contracts` alias.
+The canonical API contract is [OpenAPI 3.1](./openapi.yaml). Versioned routes
+are mounted under `/api/v1`; legacy `/api` aliases remain available for the
+existing frontend. The unauthenticated liveness and readiness checks are
+`GET /health` and `GET /ready`.
+
+## Authentication
+
+| Method | Path | Authentication | Purpose |
+|---|---|---|---|
+| POST | `/auth/register` | No | Create an account and session |
+| POST | `/auth/login` | No | Authenticate and create a session |
+| POST | `/auth/refresh` | Refresh cookie | Rotate access and refresh tokens |
+| POST | `/auth/logout` | No | Clear refresh cookie |
+| GET | `/auth/me` | Bearer access token | Get current user |
+| DELETE | `/auth/me` | Bearer access token | Permanently delete account data |
+
+## Contracts
+
+| Method | Path | Authentication | Purpose |
+|---|---|---|---|
+| POST | `/contracts` | Bearer access token | Upload a multipart contract and enqueue analysis |
+| GET | `/contracts` | Bearer access token | List current user's contracts |
+| GET | `/contracts/:id` | Bearer access token | Get an owned contract and clauses |
+| GET | `/contracts/:id/status` | Bearer access token | Poll processing state |
+| DELETE | `/contracts/:id` | Bearer access token | Delete an owned contract |
+| POST | `/contracts/:id/letter` | Bearer access token | Generate a letter from flagged clauses |
+| PUT | `/contracts/:id/letter` | Bearer access token | Save letter edits |
+| GET | `/contracts/:id/letter/pdf` | Bearer access token | Download the latest letter PDF |
+
+Upload accepts PDF, PNG, or JPEG files up to 10 MiB. The API checks file magic
+bytes and returns analysis status separately from the upload response.
+
+## Errors
+
+Errors use `{ "code": "...", "message_key": "...", "details": {} }` where
+available. The frontend maps `message_key` through its active locale. Common
+statuses include 400 for malformed/missing input, 401 for unauthenticated
+requests, 403 for ownership violations, 404 for missing resources, 409 for
+state conflicts, 413 for oversized uploads, 415 for unsupported file types,
+422 for business validation, and 429 for rate limits.
+
+All contract routes require an access token in the `Authorization: Bearer
+<token>` header. The paths are available under `/api/v1/contracts` and the
+legacy `/api/contracts` alias.
 
 ## Generate an objection letter
 

@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
 import { config } from './shared/config';
 import { errorHandler } from './shared/errors/errorHandler';
+import { logger } from './shared/logger';
 
 // Infrastructure
 import { pool } from './infrastructure/database/pool';
@@ -58,6 +59,9 @@ export function createApp(options?: { inMemory?: boolean }) {
 
   // Repositories & storage wiring
   const isInMemory = options?.inMemory || config.NODE_ENV === 'test';
+  if (config.NODE_ENV === 'production') {
+    app.set('trust proxy', 1);
+  }
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
   const fileStorage = new LocalFileStorage();
@@ -118,6 +122,23 @@ export function createApp(options?: { inMemory?: boolean }) {
   // Health probe
   app.get(['/health', '/api/health'], (_req, res) => {
     res.status(200).json({ status: 'ok' });
+  });
+
+  app.get(['/ready', '/api/ready'], async (_req, res) => {
+    if (isInMemory) {
+      res.status(200).json({ status: 'ready' });
+      return;
+    }
+
+    try {
+      await pool.query('SELECT 1');
+      res.status(200).json({ status: 'ready' });
+    } catch (error) {
+      logger.warn('Backend readiness check failed', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+      res.status(503).json({ status: 'not_ready' });
+    }
   });
 
   // Mount API v1 Routes

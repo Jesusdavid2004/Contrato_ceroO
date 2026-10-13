@@ -5,6 +5,20 @@ import { createApp } from '../src/app';
 describe('Layered backend API compatibility', () => {
   const app = createApp({ inMemory: true });
 
+  it('reports the in-memory application as ready', async () => {
+    const response = await request(app).get('/ready');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ready' });
+  });
+
+  it('preserves the health liveness endpoint', async () => {
+    const response = await request(app).get('/health');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: 'ok' });
+  });
+
   it('supports the auth, asynchronous upload, and polling routes used by the frontend', async () => {
     const email = `runtime_${Date.now()}@example.com`;
     const registration = await request(app)

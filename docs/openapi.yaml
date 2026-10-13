@@ -1,0 +1,586 @@
+openapi: 3.1.0
+info:
+  title: ContratoClaro API
+  version: 1.0.0
+  description: >
+    Authenticated API for contract analysis and objection letters. Responses
+    contain informational analysis, not legal advice.
+servers:
+  - url: /api/v1
+    description: API through the same-origin ingress
+tags:
+  - name: Authentication
+    description: User registration and session management
+  - name: Contracts
+    description: Contract uploads, analysis results, and objection letters
+paths:
+  /auth/register:
+    post:
+      tags: [Authentication]
+      operationId: registerUser
+      security: []
+      summary: Register a user and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created; refresh token is set in an httpOnly cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /auth/login:
+    post:
+      tags: [Authentication]
+      operationId: loginUser
+      security: []
+      summary: Authenticate and create a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authenticated; refresh token is set in an httpOnly cookie
+          headers:
+            Set-Cookie:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      operationId: refreshSession
+      security:
+        - refreshCookie: []
+      summary: Rotate session tokens
+      description: Reads the refresh cookie; a request-body refreshToken is retained for compatibility.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+      responses:
+        "200":
+          description: Tokens refreshed and refresh cookie rotated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      operationId: logoutSession
+      security: []
+      summary: Clear refresh session cookie
+      responses:
+        "200":
+          description: Session cookie cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+  /auth/me:
+    get:
+      tags: [Authentication]
+      operationId: getCurrentUser
+      security:
+        - bearerAuth: []
+      summary: Get the current user
+      responses:
+        "200":
+          description: Current user profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [user]
+                properties:
+                  user:
+                    $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    delete:
+      tags: [Authentication]
+      operationId: deleteCurrentUser
+      security:
+        - bearerAuth: []
+      summary: Permanently delete the current account and owned data
+      responses:
+        "200":
+          description: Account deletion completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /contracts:
+    get:
+      tags: [Contracts]
+      operationId: listContracts
+      security:
+        - bearerAuth: []
+      summary: List the current user's contracts
+      responses:
+        "200":
+          description: Contract summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Contract"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [Contracts]
+      operationId: uploadContract
+      security:
+        - bearerAuth: []
+      summary: Upload a contract and enqueue analysis
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [contract]
+              properties:
+                contract:
+                  type: string
+                  format: binary
+                title:
+                  type: string
+                contract_type:
+                  $ref: "#/components/schemas/ContractType"
+                jurisdiction:
+                  type: string
+                  example: CO
+                locale:
+                  type: string
+                  enum: [en, es]
+      responses:
+        "201":
+          description: Contract accepted for asynchronous analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "413":
+          $ref: "#/components/responses/PayloadTooLarge"
+        "415":
+          $ref: "#/components/responses/UnsupportedMediaType"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /contracts/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: getContract
+      security:
+        - bearerAuth: []
+      summary: Get a contract and its analyzed clauses
+      responses:
+        "200":
+          description: Contract result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Contract"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    delete:
+      tags: [Contracts]
+      operationId: deleteContract
+      security:
+        - bearerAuth: []
+      summary: Delete an owned contract
+      responses:
+        "200":
+          description: Contract deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/{id}/status:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: getContractStatus
+      security:
+        - bearerAuth: []
+      summary: Poll asynchronous analysis status
+      responses:
+        "200":
+          description: Current processing state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, status, failure_message_key]
+                properties:
+                  id:
+                    type: string
+                  status:
+                    $ref: "#/components/schemas/ContractStatus"
+                  failure_message_key:
+                    type: [string, "null"]
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/{id}/letter:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    post:
+      tags: [Contracts]
+      operationId: generateObjectionLetter
+      security:
+        - bearerAuth: []
+      summary: Generate and persist an objection letter
+      description: Uses only medium/high-risk clauses. Returns 422 without an AI call if none are flagged.
+      responses:
+        "201":
+          description: Letter generated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectionLetter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+    put:
+      tags: [Contracts]
+      operationId: updateObjectionLetter
+      security:
+        - bearerAuth: []
+      summary: Save edits to the latest objection letter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [content]
+              properties:
+                content:
+                  type: string
+                  minLength: 1
+                  description: Non-empty text limited to 350 words.
+      responses:
+        "200":
+          description: Edited letter saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ObjectionLetter"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/letter/pdf:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: downloadObjectionLetterPdf
+      security:
+        - bearerAuth: []
+      summary: Download the latest objection letter as a PDF
+      responses:
+        "200":
+          description: Localized PDF attachment
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    refreshCookie:
+      type: apiKey
+      in: cookie
+      name: cc_refresh_token
+  parameters:
+    ContractId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 1
+    User:
+      type: object
+      required: [id, name, email]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+    SessionResponse:
+      type: object
+      required: [user, accessToken, token]
+      properties:
+        user:
+          $ref: "#/components/schemas/User"
+        accessToken:
+          type: string
+        token:
+          type: string
+          description: Backwards-compatible alias for accessToken.
+    ContractType:
+      type: string
+      enum: [LEASE, SERVICE, EMPLOYMENT, OTHER]
+    ContractStatus:
+      type: string
+      enum: [UPLOADED, EXTRACTING, ANALYZING, READY, FAILED]
+    Contract:
+      type: object
+      required: [id, user_id, title, file_name, contract_type, jurisdiction, locale, status, global_risk_score, uploaded_at, clauses]
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        title:
+          type: string
+        file_name:
+          type: string
+        contract_type:
+          $ref: "#/components/schemas/ContractType"
+        jurisdiction:
+          type: string
+        locale:
+          type: string
+        status:
+          $ref: "#/components/schemas/ContractStatus"
+        global_risk_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        uploaded_at:
+          type: string
+          format: date-time
+        failure_reason:
+          type: [string, "null"]
+        clauses:
+          type: array
+          items:
+            $ref: "#/components/schemas/Clause"
+    Clause:
+      type: object
+      required: [id, order_index, original_text, risk_level, confidence, plain_explanation, why_risky, legal_basis, suggested_change]
+      properties:
+        id:
+          type: string
+        order_index:
+          type: integer
+        original_text:
+          type: string
+        risk_level:
+          type: string
+          enum: [low, medium, high]
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+        plain_explanation:
+          type: string
+        why_risky:
+          type: [string, "null"]
+        legal_basis:
+          type: array
+          items:
+            type: object
+            required: [reference, summary]
+            properties:
+              reference:
+                type: string
+              summary:
+                type: string
+        suggested_change:
+          type: [string, "null"]
+    ObjectionLetter:
+      type: object
+      required: [id, contract_id, locale, content, created_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        locale:
+          type: string
+        content:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    MessageResponse:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+    ErrorResponse:
+      type: object
+      required: [code, message_key]
+      properties:
+        code:
+          type: string
+        message_key:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+  responses:
+    BadRequest:
+      description: Malformed request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Unauthorized:
+      description: Authentication is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Forbidden:
+      description: Resource is owned by another user
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    NotFound:
+      description: Resource does not exist
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    Conflict:
+      description: Request conflicts with current resource state
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    ValidationError:
+      description: Request or business validation failed
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    PayloadTooLarge:
+      description: Upload exceeds the 10 MiB limit
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    UnsupportedMediaType:
+      description: File type or magic bytes are unsupported
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    RateLimited:
+      description: Request limit exceeded
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"

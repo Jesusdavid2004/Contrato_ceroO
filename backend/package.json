@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && npm run migrate:up && node dist/src/server.js",
+    "start": "npm run migrate:up && node dist/src/server.js",
     "dev": "npm run build && npm run migrate:up && node dist/src/server.js",
     "type-check": "tsc --noEmit",
     "test": "vitest run",

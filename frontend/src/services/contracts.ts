@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? '';
 const STATUS_POLL_INTERVAL_MS = 500;
 const ANALYSIS_TIMEOUT_MS = 60_000;
 
@@ -25,6 +25,15 @@ export interface ContractAnalysisResult {
   status: string;
   global_risk_score: number;
   clauses: ContractClauseResponse[];
+}
+
+export interface ContractSummary {
+  id: string;
+  title: string;
+  file_name: string;
+  status: string;
+  global_risk_score: number;
+  uploaded_at: string;
 }
 
 export interface ObjectionLetterResponse {
@@ -165,6 +174,56 @@ function toResultsViewModel(contract: ContractResponse) {
       text: clause.original_text,
     })),
   };
+}
+
+function parseContractSummary(value: unknown): ContractSummary {
+  if (
+    !isRecord(value) ||
+    typeof value.id !== 'string' ||
+    typeof value.title !== 'string' ||
+    typeof value.file_name !== 'string' ||
+    typeof value.status !== 'string' ||
+    typeof value.global_risk_score !== 'number' ||
+    value.global_risk_score < 0 ||
+    value.global_risk_score > 100 ||
+    typeof value.uploaded_at !== 'string' ||
+    Number.isNaN(Date.parse(value.uploaded_at))
+  ) {
+    throw new ContractApiError('errors.api_error');
+  }
+  return {
+    id: value.id,
+    title: value.title,
+    file_name: value.file_name,
+    status: value.status,
+    global_risk_score: value.global_risk_score,
+    uploaded_at: value.uploaded_at,
+  };
+}
+
+export async function listContracts(token: string): Promise<ContractSummary[]> {
+  const response = await requestJson(`${API_URL}/api/contracts`, token);
+  if (!Array.isArray(response)) throw new ContractApiError('errors.api_error');
+  return response.map(parseContractSummary);
+}
+
+export async function getContractAnalysisResult(
+  contractId: string,
+  token: string,
+) {
+  const response = await requestJson(
+    `${API_URL}/api/contracts/${encodeURIComponent(contractId)}`,
+    token,
+  );
+  return toResultsViewModel(parseContract(response));
+}
+
+export async function deleteContract(contractId: string, token: string): Promise<void> {
+  await requestJson(
+    `${API_URL}/api/contracts/${encodeURIComponent(contractId)}`,
+    token,
+    { method: 'DELETE' },
+  );
 }
 
 function wait(milliseconds: number): Promise<void> {

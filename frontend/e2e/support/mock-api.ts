@@ -36,6 +36,7 @@ const SAFE_CLAUSE = {
 export interface MockApiOptions {
   flagged?: boolean;
   failFirstUpload?: boolean;
+  includeHistory?: boolean;
 }
 
 export interface MockApiState {
@@ -44,6 +45,7 @@ export interface MockApiState {
   savedLetterContent: string | null;
   contractWasReadBack: boolean;
   letterWasDownloaded: boolean;
+  historyContractWasDeleted: boolean;
 }
 
 export async function mockContractApi(page: Page, options: MockApiOptions = {}): Promise<MockApiState> {
@@ -53,6 +55,7 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
     savedLetterContent: null,
     contractWasReadBack: false,
     letterWasDownloaded: false,
+    historyContractWasDeleted: false,
   };
 
   await page.route('**/api/**', async (route) => {
@@ -75,6 +78,29 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
     }
     if (url.pathname === '/api/auth/me' && method === 'GET') {
       return json({ user });
+    }
+    if (url.pathname === '/api/contracts' && method === 'GET' && options.includeHistory) {
+      return json([{
+        id: 'contract-history-e2e',
+        title: 'Synthetic demo lease',
+        file_name: 'synthetic-demo-lease.pdf',
+        status: 'READY',
+        global_risk_score: 44,
+        uploaded_at: '2026-10-13T12:00:00.000Z',
+      }]);
+    }
+    if (url.pathname === '/api/contracts/contract-history-e2e' && method === 'GET') {
+      state.contractWasReadBack = true;
+      return json({
+        id: 'contract-history-e2e',
+        status: 'READY',
+        global_risk_score: 44,
+        clauses: [RISKY_CLAUSE, SAFE_CLAUSE],
+      });
+    }
+    if (url.pathname === '/api/contracts/contract-history-e2e' && method === 'DELETE') {
+      state.historyContractWasDeleted = true;
+      return json({ message: 'Contract deleted' });
     }
     if (url.pathname === '/api/contracts' && method === 'POST') {
       state.uploadCount += 1;

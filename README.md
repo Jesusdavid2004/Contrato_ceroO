@@ -1,59 +1,140 @@
-# Contrato_ceroO
+# ContratoClaro
 
-ContratoClaro es una aplicación web que detecta cláusulas abusivas en contratos (arriendo, servicios, laborales) y genera una carta de objeción.
+ContratoClaro helps tenants, consumers, and employees understand risky terms
+in contracts and prepare a respectful objection letter. It provides general
+information, **not legal advice**.
 
-## STACK TECNOLÓGICO
-- **Frontend**: React + Vite + TailwindCSS
-- **Backend**: Node.js + Express
-- **Base de datos**: PostgreSQL
-- **Extracción de texto**: pdf-parse, Tesseract.js
-- **IA**: LLM vía API
+## Quick Start
 
-## FUNCIONALIDADES
-1. Registro/login de usuario (JWT).
-2. Subida de contrato en PDF o imagen.
-3. Extracción y segmentación de cláusulas.
-4. Análisis de riesgo usando IA.
-5. Carta de objeción descargable.
+Requirements: Docker Engine with Compose v2. Node.js 22 is required to run the
+repository checks outside the containers.
 
-## Recuperación de fuentes legales (RAG)
+1. Copy the local environment template and set unique local passwords:
 
-RAG es opcional y permanece desactivado por defecto (`RAG_ENABLED=false`). Para
-Colombia, el corpus curado inicial contiene resúmenes breves de la Ley 1480 de
-2011 y la Ley 820 de 2003; cada entrada incluye una referencia y un enlace al
-Gestor Normativo oficial de Función Pública. Los resúmenes se usan para
-recuperación semántica, no sustituyen la consulta de la norma oficial ni son
-asesoría legal. Verifica vigencia, alcance y texto de cada fuente oficial antes
-de mantener o ampliar el corpus.
+   ```powershell
+   Copy-Item .env.example .env
+   ```
 
-Al habilitar RAG, PostgreSQL necesita pgvector (la imagen de Compose ya lo
-incluye). El backend descarga una vez `Xenova/multilingual-e5-small` para
-generar embeddings localmente; el modelo produce vectores de 384 dimensiones y
-no tiene coste por petición. La descarga inicial y el uso requieren disco y
-cómputo local. El volumen `embedding-models` de Compose conserva los pesos.
-Aplica las migraciones al iniciar el backend y ejecuta `npm run seed:legal` en
-`backend/` para cargar el corpus colombiano. Para un entorno local fuera de
-Docker, configura `EMBEDDING_CACHE_DIR` si quieres cambiar la ruta de caché.
+   Edit `.env`: set `DB_PASSWORD`, `JWT_SECRET`, and
+   `DEMO_USER_PASSWORD` (at least 12 characters). These values are for local
+   development only.
+2. Build and start PostgreSQL, backend, and frontend:
 
-## Demo local
+   ```powershell
+   docker compose up --build -d
+   ```
 
-El backend usa `FakeAIProvider` automáticamente cuando no hay una clave de
-Anthropic configurada. Para preparar una cuenta y un contrato sintético en una
-base local, define `NODE_ENV=development`, `DEMO_USER_EMAIL` y
-`DEMO_USER_PASSWORD` (usa una contraseña de demo única de al menos 12
-caracteres) en el entorno local y ejecuta `npm run seed:demo` desde `backend/`.
-El comando aplica las migraciones y guarda cláusulas de ejemplo, no un archivo
-original. Inicia los servicios con `docker compose up --build` y accede con las
-credenciales configuradas. No uses credenciales de demo en producción.
+3. Wait until the services are healthy, then create synthetic demo data:
 
-## Evaluación y pruebas de navegador
+   ```powershell
+   docker compose ps
+   docker compose exec backend node dist/scripts/seed-demo.js
+   ```
 
-Desde `backend/`, ejecuta `npm run evaluate` para regenerar
-[`docs/evaluation.md`](./docs/evaluation.md) a partir del conjunto sintético de
-5 escenarios en `backend/evaluation/samples.json`. La métrica es una prueba de
-humo del clasificador offline y no mide la calidad de un proveedor de IA real
-ni constituye validación legal.
+4. Open `http://localhost:8080` and sign in with the demo credentials from
+   `.env`.
 
-Desde `frontend/`, ejecuta `npm run test:e2e` para probar Chromium con Playwright.
-La suite levanta Vite y simula respuestas de API deterministas; las operaciones
-reales de backend también se cubren con pruebas de integración.
+The demo seed is development-only, idempotent, and does not create or store an
+original contract file. See [the live demo script](./docs/demo-script.md).
+
+## Features
+
+- Register and sign in; upload PDF, PNG, or JPEG contract documents.
+- Track asynchronous analysis status and inspect ordered clauses with low,
+  medium, or high risk explanations.
+- Generate and edit a letter based on medium/high-risk clauses; download it as
+  a localized PDF.
+- View contract history, delete a contract, and permanently delete an account.
+- Switch English/Spanish and light/dark/system themes.
+- Optional Colombian legal-context retrieval with pgvector; it is disabled by
+  default and is not a substitute for checking official legal sources.
+
+## Architecture and Documentation
+
+- [Architecture and Mermaid diagrams](./docs/architecture.md)
+- [Deployment guide and current deployment status](./docs/deployment.md)
+- [API overview](./docs/api.md) and [OpenAPI 3.1 contract](./docs/openapi.yaml)
+- [Security notes and production blockers](./docs/security.md)
+- [Demo walkthrough](./docs/demo-script.md)
+- [Offline evaluation and limitations](./docs/evaluation.md)
+- [Runtime validation evidence](./docs/runtime-validation-report.md)
+- [Architecture discovery diagrams](./.github/modernize/assessment/engines/facts/architecture-diagram.md)
+- [Architecture decision records](./docs/adr/)
+- [Changelog](./CHANGELOG.md)
+
+There is **no public HTTPS deployment URL yet**. A cloud provider, authorized
+account/subscription, domain, managed database, and secret store must be chosen
+before provisioning production infrastructure. Local Compose is not a
+production deployment.
+
+## Technology Stack
+
+| Area | Technology |
+|---|---|
+| Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, i18next |
+| Backend | Node.js 22, Express 5, TypeScript |
+| Database | PostgreSQL 15 with pgvector |
+| AI | Anthropic SDK in configured environments; deterministic FakeAIProvider for offline demos |
+| PDF | PDFKit |
+| Tests | Vitest, Supertest, Playwright |
+| Containers and CI | Docker Compose, GitHub Actions |
+
+## Configuration
+
+Docker Compose reads the root `.env`; the backend reference is
+[backend/.env.example](./backend/.env.example). Never commit `.env` files or
+put real contract data or production credentials into the demo environment.
+
+| Variable | Purpose | Local default |
+|---|---|---|
+| `DB_PASSWORD` | PostgreSQL password | Local-only sample; replace before use |
+| `JWT_SECRET` | Signs access and refresh tokens | Local-only sample; replace before use |
+| `CORS_ORIGIN` | Exact browser origin allowed by the backend | `http://localhost:8080` |
+| `NODE_ENV` | Runtime mode | `development` |
+| `ANTHROPIC_API_KEY` | Hosted transcription/classification/letter provider | Empty; FakeAIProvider is used locally |
+| `RAG_ENABLED` | Enable legal provision retrieval | `false` |
+| `CONTRACT_FILE_RETENTION` | Original upload retention | `none` |
+| `DEMO_USER_EMAIL` | Local synthetic demo account | `demo@example.test` |
+| `DEMO_USER_PASSWORD` | Local demo password; at least 12 characters | Must be set |
+
+Production additionally requires `DATABASE_URL`, an explicitly set secure
+`JWT_SECRET`, an exact HTTPS `CORS_ORIGIN`, and `ANTHROPIC_API_KEY`. Production
+startup rejects demo AI and non-ephemeral file retention.
+
+## Validation Commands
+
+From `backend/`:
+
+```powershell
+npm ci
+npm run type-check
+npm test
+npm run build
+npm run evaluate
+```
+
+From `frontend/`:
+
+```powershell
+npm ci
+npm run lint
+npm run i18n:check
+npm run build
+npm run test:e2e
+```
+
+Playwright browser tests stub the API for deterministic UI coverage. Backend
+integration tests and the PostgreSQL-backed demo seed provide separate API and
+database evidence; see the runtime report for exact scope and gaps.
+
+## Screenshots
+
+No verified application screenshots have been committed yet. The synthetic
+demo can be used to capture release screenshots after running the local stack.
+
+## Resumen en español
+
+ContratoClaro ayuda a revisar contratos, entender cláusulas de riesgo y preparar
+una carta de objeción editable. La información es general y no constituye
+asesoría legal. La demo local usa datos sintéticos; todavía no existe un
+despliegue público HTTPS.
