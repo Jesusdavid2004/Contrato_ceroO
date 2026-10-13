@@ -33,6 +33,9 @@ jobs:
       - name: Run unit & characterization tests
         run: npm test
 
+      - name: Evaluate offline high-risk classification
+        run: npm run evaluate
+
   frontend:
     name: Frontend CI
     runs-on: ubuntu-latest
@@ -61,3 +64,9 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser end-to-end tests
+        run: npm run test:e2e

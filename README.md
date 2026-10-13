@@ -34,3 +34,26 @@ cómputo local. El volumen `embedding-models` de Compose conserva los pesos.
 Aplica las migraciones al iniciar el backend y ejecuta `npm run seed:legal` en
 `backend/` para cargar el corpus colombiano. Para un entorno local fuera de
 Docker, configura `EMBEDDING_CACHE_DIR` si quieres cambiar la ruta de caché.
+
+## Demo local
+
+El backend usa `FakeAIProvider` automáticamente cuando no hay una clave de
+Anthropic configurada. Para preparar una cuenta y un contrato sintético en una
+base local, define `NODE_ENV=development`, `DEMO_USER_EMAIL` y
+`DEMO_USER_PASSWORD` (usa una contraseña de demo única de al menos 12
+caracteres) en el entorno local y ejecuta `npm run seed:demo` desde `backend/`.
+El comando aplica las migraciones y guarda cláusulas de ejemplo, no un archivo
+original. Inicia los servicios con `docker compose up --build` y accede con las
+credenciales configuradas. No uses credenciales de demo en producción.
+
+## Evaluación y pruebas de navegador
+
+Desde `backend/`, ejecuta `npm run evaluate` para regenerar
+[`docs/evaluation.md`](./docs/evaluation.md) a partir del conjunto sintético de
+5 escenarios en `backend/evaluation/samples.json`. La métrica es una prueba de
+humo del clasificador offline y no mide la calidad de un proveedor de IA real
+ni constituye validación legal.
+
+Desde `frontend/`, ejecuta `npm run test:e2e` para probar Chromium con Playwright.
+La suite levanta Vite y simula respuestas de API deterministas; las operaciones
+reales de backend también se cubren con pruebas de integración.

@@ -1,0 +1,82 @@
+[
+  {
+    "id": "synthetic-lease-a",
+    "contractType": "LEASE",
+    "clauses": [
+      {
+        "id": "a-1",
+        "text": "CLÁUSULA PRIMERA. El contrato tendrá renovación automática anual salvo aviso escrito.",
+        "expectedHighRisk": true
+      },
+      {
+        "id": "a-2",
+        "text": "El arrendatario notificará por escrito cualquier cambio en sus datos de contacto.",
+        "expectedHighRisk": false
+      }
+    ]
+  },
+  {
+    "id": "synthetic-service-b",
+    "contractType": "SERVICE",
+    "clauses": [
+      {
+        "id": "b-1",
+        "text": "El pago será no reembolsable bajo ninguna circunstancia.",
+        "expectedHighRisk": true
+      },
+      {
+        "id": "b-2",
+        "text": "El servicio se prestará de lunes a viernes en el horario acordado.",
+        "expectedHighRisk": false
+      }
+    ]
+  },
+  {
+    "id": "synthetic-consumer-c",
+    "contractType": "SERVICE",
+    "clauses": [
+      {
+        "id": "c-1",
+        "text": "La penalidad podrá alcanzar la totalidad del valor pagado por el consumidor.",
+        "expectedHighRisk": true
+      },
+      {
+        "id": "c-2",
+        "text": "El proveedor enviará el recibo al correo registrado después de cada pago.",
+        "expectedHighRisk": false
+      }
+    ]
+  },
+  {
+    "id": "synthetic-employment-d",
+    "contractType": "EMPLOYMENT",
+    "clauses": [
+      {
+        "id": "d-1",
+        "text": "La persona trabajadora renuncia a cualquier derecho de reclamación.",
+        "expectedHighRisk": true
+      },
+      {
+        "id": "d-2",
+        "text": "La jornada ordinaria se distribuirá de acuerdo con el calendario informado.",
+        "expectedHighRisk": false
+      }
+    ]
+  },
+  {
+    "id": "synthetic-service-e",
+    "contractType": "SERVICE",
+    "clauses": [
+      {
+        "id": "e-1",
+        "text": "La empresa podrá modificar unilateralmente las condiciones sin consentimiento del usuario.",
+        "expectedHighRisk": false
+      },
+      {
+        "id": "e-2",
+        "text": "La factura incluirá el detalle de los servicios prestados durante el período.",
+        "expectedHighRisk": false
+      }
+    ]
+  }
+]

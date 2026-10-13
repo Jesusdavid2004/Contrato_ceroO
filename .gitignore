@@ -6,6 +6,8 @@ node_modules/
 dist/
 */dist/
 dist-ssr/
+frontend/test-results/
+frontend/playwright-report/
 
 # Environment and secrets
 .env
