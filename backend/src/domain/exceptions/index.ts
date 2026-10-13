@@ -5,7 +5,7 @@ export * from './DomainError';
 export class UnsupportedFileTypeError extends DomainError {
   constructor(mimeType?: string) {
     super(
-      `Unsupported file type: ${mimeType || 'unknown'}. Only PDF, PNG, JPG, and WEBP are supported.`,
+      `Unsupported file type: ${mimeType || 'unknown'}. Only PDF, PNG, and JPG are supported.`,
       'errors.unsupported_file_type',
       415,
       { mimeType },
@@ -20,6 +20,17 @@ export class FileTooLargeError extends DomainError {
       'errors.file_too_large',
       413,
       { maxSizeMb },
+    );
+  }
+}
+
+export class FileTooManyPagesError extends DomainError {
+  constructor(maxPages: number) {
+    super(
+      `PDF exceeds the maximum allowed page count of ${maxPages}.`,
+      'errors.file_too_many_pages',
+      413,
+      { maxPages },
     );
   }
 }
@@ -55,6 +66,18 @@ export class NoFlaggedClausesError extends DomainError {
 export class AIResponseInvalidError extends DomainError {
   constructor(details?: unknown) {
     super('The AI provider returned an invalid or malformed response.', 'errors.ai_response_invalid', 502, details);
+  }
+}
+
+export class AIProviderUnavailableError extends DomainError {
+  constructor() {
+    super('The AI provider request failed.', 'errors.ai_provider_unavailable', 502);
+  }
+}
+
+export class AIRequestInvalidError extends DomainError {
+  constructor(reason: string) {
+    super(reason, 'errors.ai_request_invalid', 400);
   }
 }
 

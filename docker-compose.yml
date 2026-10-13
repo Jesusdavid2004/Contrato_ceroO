@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   db:
-    image: postgres:15-alpine
+    image: pgvector/pgvector:pg15
     container_name: contratoclaro_db
     environment:
       POSTGRES_USER: postgres
@@ -31,12 +31,18 @@ services:
       DB_USER: postgres
       DB_PASSWORD: password
       DB_NAME: contratoclaro
+      RAG_ENABLED: ${RAG_ENABLED:-false}
+      EMBEDDING_CACHE_DIR: /app/storage/models
+      DATABASE_URL: postgresql://postgres:password@db:5432/contratoclaro
       JWT_SECRET: dev-secret-change-in-prod
+      CORS_ORIGIN: http://localhost
     ports:
       - "3001:3001"
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - embedding-models:/app/storage/models
 
   frontend:
     build:
@@ -50,3 +56,4 @@ services:
 
 volumes:
   pgdata:
+  embedding-models:

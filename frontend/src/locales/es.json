@@ -47,5 +47,15 @@
   "settings.analysis_alerts_desc": "Recibe notificaciones cuando un análisis termine",
   "settings.danger_zone": "Zona de peligro",
   "settings.delete_account": "Eliminar cuenta",
-  "settings.delete_account_desc": "Elimina permanentemente todos tus datos"
+  "settings.delete_account_desc": "Elimina permanentemente todos tus datos",
+  "errors.analysis_failed": "No se pudo analizar el contrato. Inténtalo de nuevo.",
+  "errors.analysis_timeout": "El análisis está tardando demasiado. Inténtalo de nuevo.",
+  "errors.daily_quota_exceeded": "Has alcanzado el límite diario de análisis.",
+  "errors.text_extraction_failed": "No pudimos leer el texto de este contrato.",
+  "errors.file_too_large": "El archivo supera el límite de 10 MB.",
+  "errors.file_too_many_pages": "El PDF supera el límite de 40 páginas.",
+  "errors.unsupported_file_type": "Sube un archivo PDF, PNG o JPEG.",
+  "errors.ai_provider_unavailable": "El análisis de contratos no está disponible temporalmente.",
+  "errors.ai_response_invalid": "No se pudo validar la respuesta del análisis.",
+  "errors.api_error": "No se pudo completar la solicitud."
 }

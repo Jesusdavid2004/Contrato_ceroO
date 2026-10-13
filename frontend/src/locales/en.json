@@ -47,5 +47,15 @@
   "settings.analysis_alerts_desc": "Get notified when an analysis completes",
   "settings.danger_zone": "Danger zone",
   "settings.delete_account": "Delete account",
-  "settings.delete_account_desc": "Permanently remove all your data"
+  "settings.delete_account_desc": "Permanently remove all your data",
+  "errors.analysis_failed": "Contract analysis failed. Please try again.",
+  "errors.analysis_timeout": "Analysis is taking too long. Please try again.",
+  "errors.daily_quota_exceeded": "You have reached your daily analysis limit.",
+  "errors.text_extraction_failed": "We could not read the text in this contract.",
+  "errors.file_too_large": "The file exceeds the 10 MB limit.",
+  "errors.file_too_many_pages": "The PDF exceeds the 40-page limit.",
+  "errors.unsupported_file_type": "Upload a PDF, PNG, or JPEG file.",
+  "errors.ai_provider_unavailable": "Contract analysis is temporarily unavailable.",
+  "errors.ai_response_invalid": "The analysis response could not be validated.",
+  "errors.api_error": "The request could not be completed."
 }

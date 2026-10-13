@@ -4,17 +4,21 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js",
+    "build": "tsc",
+    "start": "npm run build && npm run migrate:up && node dist/src/server.js",
+    "dev": "npm run build && npm run migrate:up && node dist/src/server.js",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "migrate:up": "node-pg-migrate up",
-    "migrate:down": "node-pg-migrate down"
+    "migrate:up": "node scripts/migrate.cjs up",
+    "migrate:down": "node scripts/migrate.cjs down",
+    "seed:legal": "npm run build && node dist/scripts/seed-legal-provisions.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.133.0",
+    "@huggingface/transformers": "^4.3.1",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",

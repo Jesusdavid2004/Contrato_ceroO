@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { UploadCloud, FileText, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { ContractApiError, uploadAndAnalyzeContract } from '../services/contracts';
 
 export function Home() {
   const { t, i18n } = useTranslation();
@@ -17,21 +18,13 @@ export function Home() {
   const uploadFile = async (file: File) => {
     setIsUploading(true);
     setUploadError(null);
-    const formData = new FormData();
-    formData.append('contract', file);
-    formData.append('locale', i18n.language.substring(0, 2));
-
     try {
-      const response = await fetch('http://localhost:3001/api/contracts/analyze', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Analysis failed');
+      if (!token) throw new ContractApiError('errors.unauthorized');
+      const data = await uploadAndAnalyzeContract(file, i18n.language.substring(0, 2), token);
       navigate('/results', { state: { contractData: data } });
     } catch (err: unknown) {
-      setUploadError(err instanceof Error ? err.message : 'Upload failed. Is the backend running?');
+      const messageKey = err instanceof ContractApiError ? err.messageKey : 'errors.api_error';
+      setUploadError(t(messageKey, { defaultValue: t('errors.analysis_failed') }));
     } finally {
       setIsUploading(false);
     }

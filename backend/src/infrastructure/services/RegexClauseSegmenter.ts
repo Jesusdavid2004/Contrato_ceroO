@@ -1,32 +1,44 @@
-import type { ClauseSegmenter, SegmentedClause } from '../../domain/services/InfrastructureInterfaces';
+import type {
+  HeadingClauseSegmenter,
+  SegmentedClause,
+} from '../../domain/services/InfrastructureInterfaces';
 
-export class RegexClauseSegmenter implements ClauseSegmenter {
+export class RegexClauseSegmenter implements HeadingClauseSegmenter {
   /**
    * Matches headings:
    * 1. (CLÁUSULA|CLAUSULA|CLAUSE|ARTÍCULO|ARTICULO) + identifier + delimiter
    * 2. Numbered items: 1. , 1.1. , 1.1.1.
    */
-  private readonly clauseRegex = /(?:^|\n)\s*(?:(?:CL[AÁ]USULA|CLAUSE|ART[IÍ]CULO)\s+[A-ZÁÉÍÓÚÑ0-9.]*[\s.:\-]+|\d+(?:\.\d+)*\.\s+)/gi;
+  private readonly clauseRegex =
+    /(?:^|\n)\s*(?:(?:CL[AÁ]USULA|CLAUSE|ART[IÍ]CULO)\s+[A-ZÁÉÍÓÚÑ0-9.]*[\s.:\-]+|\d+(?:\.\d+)*(?:\.)?[\s:)\-]+)/gi;
 
   public async segment(text: string): Promise<SegmentedClause[]> {
     if (!text || text.trim().length === 0) {
       return [];
     }
 
-    const matches = [...text.matchAll(this.clauseRegex)];
-
-    if (matches.length < 2) {
-      // Fallback: split by double linebreaks into paragraphs if headings are not found
-      const paragraphs = text
-        .split(/\n\s*\n+/)
-        .map((p) => p.trim())
-        .filter((p) => p.length > 20);
-
-      return paragraphs.map((p, idx) => ({
-        orderIndex: idx + 1,
-        text: p,
-      }));
+    const clauses = this.segmentHeadings(text);
+    if (clauses.length >= 2) {
+      return clauses;
     }
+
+    const paragraphs = text
+      .split(/\n\s*\n+/)
+      .map((paragraph) => paragraph.trim())
+      .filter((paragraph) => paragraph.length > 20);
+
+    return paragraphs.map((paragraph, index) => ({
+      orderIndex: index + 1,
+      text: paragraph,
+    }));
+  }
+
+  public segmentHeadings(text: string): SegmentedClause[] {
+    if (!text || text.trim().length === 0) {
+      return [];
+    }
+
+    const matches = [...text.matchAll(this.clauseRegex)];
 
     const clauses: SegmentedClause[] = [];
     for (let i = 0; i < matches.length; i++) {

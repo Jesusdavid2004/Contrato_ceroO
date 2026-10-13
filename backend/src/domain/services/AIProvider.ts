@@ -1,5 +1,6 @@
 import type { RiskLevel } from '../value-objects/RiskLevel.ts';
 import type { LegalBasisReference } from '../entities/Clause.ts';
+import type { LegalContextProvision } from './LegalContextProvider';
 
 export interface ClassifiedClauseDTO {
   clause_id: string;
@@ -16,7 +17,20 @@ export interface ClassifyClausesRequest {
   jurisdiction: string;
   locale: string;
   clauses: Array<{ id: string; text: string }>;
-  legalContext?: string;
+  legalContext?: LegalContextProvision[];
+}
+
+export type AIModelTier = 'fast' | 'smart';
+
+export interface AIModelUsage {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+export interface ClauseClassificationResult {
+  clauses: ClassifiedClauseDTO[];
+  usage: AIModelUsage;
 }
 
 export interface ObjectionLetterRequest {
@@ -35,6 +49,9 @@ export interface ObjectionLetterRequest {
 }
 
 export interface AIProvider {
-  classifyClauses(request: ClassifyClausesRequest): Promise<ClassifiedClauseDTO[]>;
+  classifyClauses(
+    request: ClassifyClausesRequest,
+    tier?: AIModelTier,
+  ): Promise<ClauseClassificationResult>;
   generateObjectionLetter(request: ObjectionLetterRequest): Promise<string>;
 }

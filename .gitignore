@@ -22,6 +22,8 @@ pnpm-debug.log*
 # Storage and uploads
 storage/
 */storage/
+.model-cache/
+*/.model-cache/
 pgdata/
 
 # IDE and OS
@@ -30,4 +32,3 @@ pgdata/
 .DS_Store
 Thumbs.db
 CLAUDE.md
-

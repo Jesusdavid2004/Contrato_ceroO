@@ -57,8 +57,6 @@ export class LocalFileStorage implements FileStorage {
         return '.png';
       case 'image/jpeg':
         return '.jpg';
-      case 'image/webp':
-        return '.webp';
       default:
         return '.bin';
     }

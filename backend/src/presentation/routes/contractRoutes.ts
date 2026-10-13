@@ -5,6 +5,8 @@ import type { ContractRepository } from '../../domain/repositories/ContractRepos
 import { requireAuth } from '../middleware/authMiddleware';
 import { uploadLimiter } from '../middleware/rateLimiter';
 import { ContractNotFoundError, ContractOwnershipError } from '../../domain/exceptions/index';
+import type { InProcessAnalysisWorker } from '../../infrastructure/services/InProcessAnalysisWorker';
+import { FileValidator } from '../../infrastructure/services/FileValidator';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -14,6 +16,7 @@ const upload = multer({
 export function createContractRouter(deps: {
   uploadContractUseCase: UploadContractUseCase;
   contractRepository: ContractRepository;
+  analysisWorker?: InProcessAnalysisWorker;
 }): Router {
   const router = Router();
 
@@ -43,6 +46,15 @@ export function createContractRouter(deps: {
           locale: req.body.locale,
           title: req.body.title,
         });
+        if (deps.analysisWorker) {
+          const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
+          deps.analysisWorker.enqueue({
+            contractId: result.id,
+            userId: req.user!.id,
+            fileBuffer: validatedFile.buffer,
+            mimeType: validatedFile.detectedMime,
+          });
+        }
 
         res.status(201).json(result);
       } catch (err) {
@@ -56,6 +68,27 @@ export function createContractRouter(deps: {
     try {
       const contracts = await deps.contractRepository.findByOwnerId(req.user!.id);
       res.status(200).json(contracts.map((c) => c.toJSON()));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /:id/status (Poll analysis progress)
+  router.get('/:id/status', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      res.status(200).json({
+        id: contract.id,
+        status: contract.status,
+        failure_message_key: contract.failureReason,
+      });
     } catch (err) {
       next(err);
     }

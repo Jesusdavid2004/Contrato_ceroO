@@ -113,6 +113,11 @@ export class Contract {
     this.calculateGlobalRiskScore();
   }
 
+  public markAnalyzing(): void {
+    this._status = 'ANALYZING';
+    this._failureReason = null;
+  }
+
   public markFailed(reason?: string): void {
     this._status = 'FAILED';
     this._failureReason = reason ?? null;

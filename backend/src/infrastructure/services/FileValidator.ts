@@ -1,7 +1,7 @@
 import { UnsupportedFileTypeError, FileTooLargeError } from '../../domain/exceptions/index';
 
 export interface ValidatedFile {
-  detectedMime: 'application/pdf' | 'image/png' | 'image/jpeg' | 'image/webp';
+  detectedMime: 'application/pdf' | 'image/png' | 'image/jpeg';
   buffer: Buffer;
   sizeBytes: number;
 }
@@ -14,7 +14,6 @@ export class FileValidator {
    * - PDF: 25 50 44 46 2D (%PDF-)
    * - PNG: 89 50 4E 47 0D 0A 1A 0A
    * - JPEG: FF D8 FF
-   * - WEBP: 52 49 46 46 (RIFF) ... 57 45 42 50 (WEBP)
    */
   public static validate(buffer: Buffer, originalName?: string): ValidatedFile {
     if (!buffer || buffer.length === 0) {
@@ -68,20 +67,6 @@ export class FileValidator {
     // JPEG: FF D8 FF
     if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
       return 'image/jpeg';
-    }
-
-    // WEBP: RIFF at 0..3 and WEBP at 8..11
-    if (
-      buffer[0] === 0x52 &&
-      buffer[1] === 0x49 &&
-      buffer[2] === 0x46 &&
-      buffer[3] === 0x46 &&
-      buffer[8] === 0x57 &&
-      buffer[9] === 0x45 &&
-      buffer[10] === 0x42 &&
-      buffer[11] === 0x50
-    ) {
-      return 'image/webp';
     }
 
     return null;

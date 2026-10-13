@@ -1,131 +1,70 @@
-# System Audit - ContratoClaro
+# Auditoría del estado actual — ContratoClaro
 
-**Date:** 2026-10-12  
-**Audit Type:** Read-Only Baseline Architectural & Security Audit (Phase 0)  
-**Standard Reference:** `CLAUDE.md` & Project Specification
+**Fecha:** 2026-10-13
+**Tipo:** auditoría de solo lectura y comparación contra `CLAUDE.md`
+**Alcance:** auditoría del código existente, actualizada tras conectar el servidor y la UI al backend nuevo. La extracción, segmentación y análisis asíncrono ya recorren el entrypoint configurado por `npm start` y Docker.
 
----
+## 1. Resumen ejecutivo
 
-## 1. Executive Summary
+El repositorio avanzó más allá del prototipo que describía la auditoría anterior. Ya hay una base de Clean Architecture en `backend/src`, migración SQL versionada, validación de archivos, autenticación con access/refresh tokens, límites de solicitudes, pruebas del backend, Dockerfiles, Docker Compose multi-servicio y un workflow de CI.
 
-The ContratoClaro codebase currently contains an initial, functional prototype composed of:
-1. A **frontend** SPA built with Vite, React 19, TypeScript, Tailwind CSS v4, React Router 7, and react-i18next.
-2. A **backend** monolithic service built with Node.js and Express 5 in JavaScript (CommonJS), utilizing in-memory data structures (`Map`), mock clause classification, and basic JWT authentication.
-3. A **database** definition (`db_schema.sql`) for PostgreSQL with Spanish naming, unlinked to the backend runtime (a connection pool in `db.js` is defined but unused).
-4. A **docker-compose** file containing only the PostgreSQL container.
+El entrypoint normal ahora compila y arranca `backend/src/server.ts`, ejecutando migraciones antes de escuchar. La UI sube contratos por la API nueva, consulta el estado y adapta el DTO del resultado. Se mantiene `backend/index.js` para las pruebas históricas; aún falta validar el despliegue contra PostgreSQL real y recorrer el flujo completo en navegador.
 
-While the frontend has good visual components and basic routing, the backend currently diverges significantly from the engineering standards defined in `CLAUDE.md` (Clean Architecture, TypeScript, versioned migrations, secure auth, robust file validation, and real AI integration).
+### Verificación ejecutada
 
----
+| Comprobación | Resultado |
+|---|---|
+| `backend`: `npm test` | Correcto: 9 archivos, 72 pruebas aprobadas |
+| `backend`: `npm run build` | Correcto: servidor TypeScript compilado |
+| `backend`: `npm run type-check` | Correcto |
+| `frontend`: `npm run lint` | Correcto, con una advertencia de Fast Refresh en `AuthContext.tsx` |
+| `frontend`: `npm run i18n:check` | Correcto: 49 claves sincronizadas |
+| `frontend`: `npm run build` | Correcto |
 
-## 2. Current Architecture & Component Inventory
+El smoke test del servidor compilado confirmó `GET /api/health` (200). Aún no se ejecutó una prueba de migraciones/repositorios contra PostgreSQL real ni una prueba e2e de navegador.
 
-### 2.1 Backend (`/backend`)
-* **Runtime & Language:** Node.js, plain JavaScript (CommonJS), single entrypoint (`index.js`).
-* **Dependencies:**
-  * Web/HTTP: `express` (v5.2.1), `cors`, `helmet`
-  * Auth: `bcrypt`, `jsonwebtoken`
-  * Uploads/Files: `multer` (in-memory storage), `pdf-parse`
-  * Database: `pg` (v8.23.1), `dotenv`
-* **Current Endpoints:**
-  * `GET /api/health` — Basic liveness probe.
-  * `POST /api/auth/register` — In-memory user registration.
-  * `POST /api/auth/login` — In-memory credential verification with bcrypt.
-  * `GET /api/auth/me` — Protected route returning user payload from Bearer token.
-  * `POST /api/contracts/analyze` — Multipart file upload (`contract`). Extracts text via `pdf-parse` (or mocked OCR text for images), runs simulated clause analysis with `setTimeout`, computes an arbitrary additive risk score, and stores in an in-memory `Map`.
-  * `GET /api/contracts` — Returns list of analyzed contracts for the authenticated user from memory.
-  * `DELETE /api/contracts/:id` — Deletes contract from memory with basic ownership check.
-* **Testing:** No test runner or test suite configured (`scripts.test` is a stub).
+## 2. Avance que sí existe
 
-### 2.2 Frontend (`/frontend`)
-* **Runtime & Framework:** React 19, Vite 8, TypeScript (strict mode enabled in `tsconfig.json`).
-* **Styling & UI:** Tailwind CSS v4 (`@tailwindcss/vite`), CSS custom properties for theming, Lucide React icons, Framer Motion animations.
-* **Routing:** React Router DOM v7 (`BrowserRouter` in `App.tsx` with `ProtectedRoute`).
-* **State & Data Fetching:** Direct `fetch` invocations in `AuthContext` and page components. No TanStack Query or Zod validation schemas.
-* **i18n:** `i18next` + `react-i18next` with `en.json` and `es.json`.
-* **Tooling:** Oxlint configured. No Prettier, Vitest, Testing Library, or Playwright.
+- **Arquitectura backend parcial:** entidades, objetos de valor, interfaces, repositorios, casos de uso, middleware, configuración y manejador centralizado en `backend/src`.
+- **Persistencia parcial:** repositorios PostgreSQL y una migración inicial con tablas en inglés, incluyendo `users`, `contracts`, `clauses`, `objection_letters`, `ai_usage` y `legal_provisions`.
+- **Reglas de dominio:** cálculo ponderado del riesgo en `Contract.ts`; existe cobertura unitaria de dominio.
+- **Extracción y segmentación (Fase 4):** PDF con capa de texto mediante `pdf-parse`, límite de 40 páginas, renderizado OCR por visión para PDFs escaneados e imágenes PNG/JPEG, segmentación regex y asistencia Claude cuando hay menos de tres encabezados. Hay fixtures español/inglés y pruebas del adaptador sin llamadas de red.
+- **Clasificación de contratos (Fase 5):** proveedor Anthropic con salida estructurada validada por Zod y un retry, lotes de hasta ocho cláusulas, revisión de baja confianza con el modelo smart, cuota diaria reservada por usuario, cache efímero acotado y registro de tokens/latencia. El modo offline usa `FakeAIProvider` para clasificación y cartas, y permite analizar PDFs con texto; OCR sigue requiriendo una clave Anthropic.
+- **Arranque y compatibilidad con la UI:** `npm start` y Docker compilan el servidor nuevo, aplican migraciones y arrancan `src/server.ts`; el frontend usa subida, polling de estado y carga del resultado. El worker es local al proceso y los trabajos pendientes se pierden si el servidor se detiene.
+- **Seguridad en el backend nuevo:** validación por magic bytes, límite de tamaño, cookies httpOnly para refresh, endpoints de refresh/logout/borrado de cuenta y middleware de rate limit.
+- **Base de pruebas y CI:** caracterización del backend, pruebas de dominio y segmentación; workflow de GitHub Actions para type-check, pruebas backend, lint, i18n y build frontend.
+- **Infraestructura local:** servicios `db`, `backend` y `frontend` en `docker-compose.yml`, con Dockerfile por servicio.
+- **Documentación inicial:** tres ADRs y este informe actualizado.
 
-### 2.3 Database & Infrastructure
-* **Containerization:** `docker-compose.yml` launches only `postgres:15-alpine`. Backend and frontend services are not orchestrated in docker-compose.
-* **Schema:** `backend/db_schema.sql` defines tables: `usuario`, `contrato`, `clausula`, `carta_objecion`.
-* **Database Driver:** `backend/db.js` creates a `pg.Pool`, but it is completely bypassed by `index.js`. No migrations tool is installed.
+## 3. Brechas actuales respecto al prompt
 
----
+| Área | Estado actual y evidencia | Prioridad |
+|---|---|---|
+| **Ejecución del backend nuevo** | `npm start` compila, migra y ejecuta `dist/src/server.js`, y Docker usa `npm start`; la suite histórica aún caracteriza `../index.js`, pero también existen pruebas del app nuevo. | Media |
+| **Rutas y contrato API** | La UI sube por `/api/contracts`, consulta `GET /api/contracts/:id/status` y carga el resultado. El servicio adapta `original_text` a `text` para la pantalla de resultados. Falta una prueba e2e en navegador. | Alta |
+| **Persistencia y migraciones** | El arranque ejecuta migraciones y el pool acepta `DATABASE_URL` o variables `DB_*`; Compose provee una URL para el contenedor. Falta probar migraciones y repositorios contra PostgreSQL real. | Alta |
+| **Secretos y configuración** | Se mantienen valores predeterminados de desarrollo para facilitar la ejecución local; ahora producción falla al iniciar si faltan JWT_SECRET, DB_PASSWORD/DATABASE_URL o CORS_ORIGIN. Compose usa credenciales exclusivamente de desarrollo y deben reemplazarse al desplegar. | Alta |
+| **Autenticación en frontend** | El frontend todavía persiste el access token en `localStorage` y lo manda en `Authorization`; el backend nuevo conserva compatibilidad con ese token y también emite cookie httpOnly. Falta completar el refresh por cookie en el cliente. | Alta |
+| **Archivos y borrado** | La validación por magic bytes y tamaño existe en la nueva ruta. Pero `UploadContractUseCase` descarta el identificador devuelto por `FileStorage.store`; luego el borrado de cuenta pasa el ID del contrato a `FileStorage.delete`, que espera una URI `file://...`. Además, el borrado individual de contrato no limpia el archivo. La retención `7d`/`30d` no tiene proceso de expiración visible. | Alta |
+| **Análisis de contratos** | La API activa encola el análisis, y el worker procesa extracción, segmentación y clasificación; se persiste el resultado y se expone polling con ownership. La cola es local al proceso, no durable. OCR requiere `ANTHROPIC_API_KEY`; offline admite PDFs con texto. | Alta |
+| **IA, cuota y RAG** | Clasificación estructurada, retry, batching, re-check, cache acotado y medición están implementados; la cuota diaria usa reserva transaccional. El contexto legal/RAG, pgvector y retrieval siguen pendientes de la Fase 6. | Alta |
+| **Cartas de objeción** | Existen entidad/repositorio y tabla, pero no se encontró caso de uso/ruta completa, edición/preview en UI ni generación de PDF localizado. | Media |
+| **Frontend y datos** | Aún usa `fetch` directamente en `AuthContext` y páginas. No hay `api-client.ts`, TanStack Query ni validación Zod de respuestas. No está reorganizado por feature. El frontend no tiene type-check configurado en CI. | Alta |
+| **i18n y tema** | La paridad en/es pasa; el idioma se persiste como `cc_locale`, no `lang`. El tema solo maneja `light`/`dark`; no conserva el modo `system` ni reacciona a cambios del SO después de iniciar. No hay script inline de tema antes del primer render, y falta confirmar sincronización de `<html lang>`, formato localizado y disclaimer. | Media |
+| **Pruebas** | Las pruebas backend pasan, pero no se observan pruebas frontend, integración con DB real, Playwright, gate de cobertura del 70% ni pruebas de los flujos nuevos por API. La suite de caracterización sigue enfocada en `index.js`. | Alta |
+| **CI y calidad** | CI no ejecuta type-check de frontend, pruebas frontend, auditoría de seguridad ni formato. Existe una advertencia lint de Fast Refresh. Prettier no figura en los scripts/dependencias del frontend. | Media |
+| **Documentación y entrega** | Hay ADRs, pero faltan documentos requeridos de arquitectura (diagramas Mermaid), API/OpenAPI, evaluación de IA, despliegue, seguridad y demo. Falta verificar README completo, CHANGELOG, seed/demo de un comando y release/tag `v1.0.0`. | Media |
+| **Higiene del repositorio** | Git rastrea **1.555 archivos dentro de `node_modules`**. Debe dejar de versionarse el contenido generado y conservarse solo los manifiestos/lockfiles; antes de limpiarlo, comprobar que los cambios de índice sean únicamente dependencias generadas. | Alta |
 
-## 3. Gaps Analysis vs. `CLAUDE.md` and Specification
+## 4. Orden recomendado para completar el trabajo
 
-| Area | Current Implementation | Standard Requirement (`CLAUDE.md`) | Gap Status |
-| :--- | :--- | :--- | :--- |
-| **Language & Naming** | DB schema and columns in Spanish (`usuario`, `contrato`, `clausula`, `carta_objecion`). | ALL code, identifiers, DB columns, routes, files in English. User-facing text in i18n. | **Non-compliant** |
-| **Backend Architecture** | Single monolithic `index.js` file (~228 lines) holding routes, mock logic, and in-memory state. | Layered Clean Architecture: `domain/`, `application/`, `infrastructure/`, `presentation/`, and composition root (`container`). | **Non-compliant** |
-| **Backend Language** | Plain JavaScript (CommonJS). | TypeScript strict mode. | **Non-compliant** |
-| **Database Persistence** | In-memory `Map` for users and contracts. `db.js` is disconnected. | PostgreSQL persistence with versioned migrations (`node-pg-migrate`), parameterized queries via repository pattern. | **Non-compliant** |
-| **Schema Completeness** | Missing contract type, jurisdiction, locale, processing status, risk details, JSONB legal basis, AI usage, vector embeddings. | Complete domain model: contracts (`type`, `jurisdiction`, `status`, `global_risk_score`), clauses (`confidence`, `why_risky`, `legal_basis` JSONB, `suggested_change`), `ai_usage`, `legal_provisions`. | **Non-compliant** |
-| **Risk Calculation** | Ad-hoc calculation: `high += 25`, `medium += 10`, capped at 100. | Standard domain formula: `round(100 * (3*high + medium) / (3 * totalClauses))`. | **Non-compliant** |
-| **AI Integration** | Hardcoded mock generator with `setTimeout(1500)`. | `AIProvider` interface with Anthropic SDK, `FakeAIProvider` for tests/offline, batched clause classification (up to 8), Zod structured output, low-confidence re-checks, prompts in separate versioned files. | **Non-compliant** |
-| **Analysis Pipeline** | Synchronous endpoint (`POST /api/contracts/analyze`). | Asynchronous pipeline with in-process worker, status polling (`/contracts/:id/status`), text extraction + OCR fallback, regex/AI segmentation. | **Non-compliant** |
-| **Objection Letter** | Not implemented on backend or frontend. | Generation endpoint, editable preview, placeholder replacement, and localized PDF export. | **Non-compliant** |
-| **Authentication & Tokens** | Single 7-day JWT returned in JSON body and stored in `localStorage`. | Short-lived access token + rotating refresh token in `httpOnly`, `secure`, `SameSite` cookies. `POST /auth/refresh`, `POST /auth/logout`, `DELETE /me`. | **Non-compliant** |
-| **Error Handling** | Generic `{ error: string }`. | Centralized handler mapping typed exceptions to `{ code, message_key, details? }`. | **Non-compliant** |
-| **Frontend Architecture** | Direct `fetch()` inside components and context; no response validation. | Feature-based organization, TanStack Query for server state, Zod response validation, `api-client.ts` as single HTTP gateway. | **Non-compliant** |
-| **DevOps & CI** | Only Postgres in docker-compose; no Dockerfiles; no GitHub Actions workflow. | Multi-service docker-compose (db, backend, frontend), Dockerfiles, CI with lint, type-check, tests, i18n checks. | **Non-compliant** |
-| **Testing** | No tests in frontend or backend. | Unit tests (domain/application >= 70% coverage), integration tests against test DB, Playwright e2e, security injection fixtures. | **Non-compliant** |
+1. **Validar persistencia real:** ejecutar migraciones y pruebas de repositorio contra PostgreSQL; probar auth, ownership, borrado de cuenta y ciclo de vida de archivos. Corregir el almacenamiento de la URI y la eliminación/retención.
+2. **Completar IA y cartas:** implementar RAG con pgvector y fuentes oficiales verificadas, generación editable de cartas y PDF localizado.
+3. **Endurecer el frontend:** refresh mediante cookie, TanStack Query, validación Zod, estados de carga/error, modo system y pruebas de idioma/tema.
+4. **Cerrar gates de calidad:** integración real y Playwright, cobertura de dominio/aplicación, type-check frontend, lint/formato y CI con todos los gates.
+5. **Finalizar entrega:** documentación de arquitectura/API/seguridad/despliegue/evaluación/demo, seed de demostración, changelog y release cuando los gates pasen.
+6. **Limpiar artefactos versionados:** dejar de rastrear `node_modules` y revisar el diff antes de cualquier eliminación del índice.
 
----
+## 5. Criterio de cierre de esta fase
 
-## 4. Security Findings & Risks
-
-1. **In-Memory Volatility & Absence of Persistence:**
-   * User accounts and contract data exist solely in Node.js process memory. Restarting or crashing the container wipes all records.
-2. **Insecure Token Storage:**
-   * Tokens stored in browser `localStorage` are vulnerable to Cross-Site Scripting (XSS).
-   * No refresh token rotation or revocation mechanism.
-3. **Weak File Upload Validation:**
-   * File validation only inspects `file.mimetype` provided by the client header, vulnerable to MIME-spoofing. Magic bytes inspection is missing.
-   * File retention policy is not implemented: original files remain in memory or storage without retention flags (`CONTRACT_FILE_RETENTION=none|7d|30d`).
-4. **Lack of Rate Limiting:**
-   * No rate limiting on authentication (`/api/auth/*`), uploads, or analysis endpoints, leaving the server vulnerable to brute-force and Denial-of-Service.
-5. **Permissive CORS:**
-   * `app.use(cors())` allows requests from any origin rather than restricting to the configured frontend origin.
-6. **Hardcoded Fallback Secrets:**
-   * `JWT_SECRET` defaults to `'contratoclaro-dev-secret-change-in-prod'` if the environment variable is omitted.
-
----
-
-## 5. Proposed Order of Work (Phased Implementation Plan)
-
-Following `CLAUDE.md` Section 10 and the project prompt:
-
-* **Phase 0 (Current):** System Audit (`docs/audit.md`) & Baseline Validation. *(Stop and request user confirmation)*.
-* **Phase 1: Tooling, Safety Net & Environment Setup:**
-  * Configure TypeScript in backend (`allowJs: true` for incremental migration).
-  * Configure testing framework (Vitest, Supertest, testing libraries) and write characterization tests pinning current endpoints (`/api/health`, `/api/auth/register`, `/api/auth/login`, `/api/contracts/analyze`).
-  * Add Prettier, set up `npm run i18n:check`, and define GitHub Actions CI workflow.
-  * Complete `docker-compose.yml` with backend and frontend services.
-* **Phase 2: Database Migrations & Clean Architecture Refactor:**
-  * Set up `node-pg-migrate` and migrate `db_schema.sql` into standardized English migrations (`users`, `contracts`, `clauses`, `objection_letters`, `ai_usage`, `legal_provisions`).
-  * Implement Domain layer (`User`, `Contract`, `Clause`, `RiskScore`, domain exceptions, formula tests).
-  * Implement centralized error handler `{ code, message_key, details }` and validated environment configuration.
-* **Phase 3: Auth Hardening & Upload Pipeline:**
-  * Implement secure authentication with httpOnly cookie refresh tokens, password hashing, and rate limiting.
-  * Build upload pipeline with magic byte validation, size limits (10MB, 40 pages), and configurable privacy retention (`none|7d|30d`).
-* **Phase 4: Text Extraction & Clause Segmentation:**
-  * PDF extraction via `pdf-parse` with character density validation; OCR image fallback.
-  * Clause segmenter with regex-first strategy and AI segmentation fallback with test fixtures.
-* **Phase 5: AI Integration:**
-  * `AIProvider` interface with Anthropic Claude SDK adapter and deterministic `FakeAIProvider`.
-  * Prompts in `src/infrastructure/ai/prompts/`. Batched classification (up to 8 clauses), Zod schema validation with retry, quota tracking, and cache.
-* **Phase 6: Legal RAG (Feature-Flagged):**
-  * `pgvector` migration, legal provision seeding script for jurisdictions (e.g. Colombia), retrieval adapter.
-* **Phase 7: Objection Letter & Localized PDF:**
-  * Objection letter generation use case (filtered to HIGH/MEDIUM clauses).
-  * Localized PDF generation.
-* **Phase 8: Frontend Evolution:**
-  * Refactor to feature structure with `api-client.ts`, TanStack Query, and Zod response validation.
-  * Update UI: contract upload with progress, highlighted clauses with risk badges, objection letter preview and editor, history, language/theme persistence without flash.
-* **Phase 9: End-to-End, Security & Evaluation Testing:**
-  * Playwright E2E tests, prompt-injection defense verification tests, evaluation dataset and metrics in `docs/evaluation.md`.
-* **Phase 10: Final Documentation, Architecture Diagrams & Release:**
-  * Mermaid diagrams, Architecture Decision Records (`docs/adr/`), OpenAPI documentation, README update, and release tag `v1.0.0`.
-
----
+Esta auditoría registra el estado actual; los trabajos siguientes deben continuar solo con confirmación, siguiendo el proceso por fases de `CLAUDE.md`. Aunque el entrypoint nuevo ya está activo, la integración con PostgreSQL real sigue sin evidencia de ejecución en este entorno.
