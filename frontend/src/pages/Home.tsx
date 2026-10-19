@@ -66,7 +66,7 @@ export function Home() {
           className="hidden"
           ref={fileInputRef}
           onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0])}
-          accept=".pdf,image/*"
+          accept=".pdf,image/png,image/jpeg,image/webp,image/tiff,image/bmp,image/gif,.tiff,.tif,.webp,.bmp"
         />
         <div className="relative z-10 flex flex-col items-center space-y-4">
           <div className="p-4 bg-blue-100 dark:bg-blue-900/40 rounded-full text-blue-600 dark:text-blue-400">
@@ -76,7 +76,7 @@ export function Home() {
             {isUploading ? t('contract.analyzing', 'Analyzing contract...') : t('contract.upload_cta', 'Upload contract')}
           </h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t('contract.upload_hint', 'PDF or Images (max 10MB)')}
+            {t('contract.upload_hint', 'PDF or Images (PNG, JPG, WebP, TIFF, BMP - max 10MB)')}
           </p>
         </div>
       </motion.div>

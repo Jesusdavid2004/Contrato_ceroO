@@ -1,7 +1,16 @@
 import { UnsupportedFileTypeError, FileTooLargeError } from '../../domain/exceptions/index';
 
+export type SupportedMimeType =
+  | 'application/pdf'
+  | 'image/png'
+  | 'image/jpeg'
+  | 'image/webp'
+  | 'image/tiff'
+  | 'image/bmp'
+  | 'image/gif';
+
 export interface ValidatedFile {
-  detectedMime: 'application/pdf' | 'image/png' | 'image/jpeg';
+  detectedMime: SupportedMimeType;
   buffer: Buffer;
   sizeBytes: number;
 }
@@ -11,9 +20,13 @@ export class FileValidator {
 
   /**
    * Checks file buffer header against known magic bytes:
-   * - PDF: 25 50 44 46 2D (%PDF-)
-   * - PNG: 89 50 4E 47 0D 0A 1A 0A
+   * - PDF:  %PDF- (25 50 44 46 2D)
+   * - PNG:  89 50 4E 47 0D 0A 1A 0A
    * - JPEG: FF D8 FF
+   * - WEBP: RIFF....WEBP (52 49 46 46 .... 57 45 42 50)
+   * - TIFF: II* (49 49 2A 00) or MM (4D 4D 00 2A)
+   * - BMP:  BM (42 4D)
+   * - GIF:  GIF87a / GIF89a (47 49 46 38)
    */
   public static validate(buffer: Buffer, originalName?: string): ValidatedFile {
     if (!buffer || buffer.length === 0) {
@@ -36,11 +49,12 @@ export class FileValidator {
     };
   }
 
-  private static detectMagicBytes(buffer: Buffer): ValidatedFile['detectedMime'] | null {
-    if (buffer.length < 12) return null;
+  private static detectMagicBytes(buffer: Buffer): SupportedMimeType | null {
+    if (buffer.length < 4) return null;
 
     // PDF: %PDF-
     if (
+      buffer.length >= 5 &&
       buffer[0] === 0x25 &&
       buffer[1] === 0x50 &&
       buffer[2] === 0x44 &&
@@ -52,6 +66,7 @@ export class FileValidator {
 
     // PNG: 89 50 4E 47 0D 0A 1A 0A
     if (
+      buffer.length >= 8 &&
       buffer[0] === 0x89 &&
       buffer[1] === 0x50 &&
       buffer[2] === 0x4e &&
@@ -67,6 +82,47 @@ export class FileValidator {
     // JPEG: FF D8 FF
     if (buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
       return 'image/jpeg';
+    }
+
+    // WEBP: RIFF at 0..3 and WEBP at 8..11
+    if (
+      buffer.length >= 12 &&
+      buffer[0] === 0x52 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x46 &&
+      buffer[8] === 0x57 &&
+      buffer[9] === 0x45 &&
+      buffer[10] === 0x42 &&
+      buffer[11] === 0x50
+    ) {
+      return 'image/webp';
+    }
+
+    // TIFF: II* (little-endian) or MM (big-endian)
+    if (
+      (buffer[0] === 0x49 && buffer[1] === 0x49 && buffer[2] === 0x2a && buffer[3] === 0x00) ||
+      (buffer[0] === 0x4d && buffer[1] === 0x4d && buffer[2] === 0x00 && buffer[3] === 0x2a)
+    ) {
+      return 'image/tiff';
+    }
+
+    // BMP: BM
+    if (buffer[0] === 0x42 && buffer[1] === 0x4d) {
+      return 'image/bmp';
+    }
+
+    // GIF: GIF87a or GIF89a
+    if (
+      buffer.length >= 6 &&
+      buffer[0] === 0x47 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x38 &&
+      (buffer[4] === 0x37 || buffer[4] === 0x39) &&
+      buffer[5] === 0x61
+    ) {
+      return 'image/gif';
     }
 
     return null;

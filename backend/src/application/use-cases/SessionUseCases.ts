@@ -42,6 +42,9 @@ export class DeleteAccountUseCase {
     // 1. Fetch user contracts and clean up stored files
     const contracts = await this.contractRepository.findByOwnerId(userId);
     for (const contract of contracts) {
+      if (contract.storageUri) {
+        await this.fileStorage.delete(contract.storageUri);
+      }
       await this.fileStorage.delete(contract.id);
       await this.contractRepository.delete(contract.id);
     }

@@ -238,7 +238,7 @@ export function Results() {
                     value: new Intl.NumberFormat(i18n.language, { style: 'percent' }).format(clause.confidence),
                   })}</span>
                 </div>
-                <p className="text-lg font-medium leading-relaxed opacity-90">“{clause.text}”</p>
+                <p className="text-lg font-medium leading-relaxed opacity-90">“{clause.text || clause.original_text}”</p>
                 {clause.plain_explanation && (
                   <div className="mt-4 space-y-2 rounded-xl bg-white/50 p-4 dark:bg-black/20">
                     <p className="text-sm font-semibold uppercase tracking-wider opacity-70">

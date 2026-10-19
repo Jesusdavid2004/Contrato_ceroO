@@ -5,8 +5,10 @@ import { AIResponseInvalidError, TextExtractionFailedError } from '../../domain/
 import type {
   AIClauseSegmenter,
   SegmentedClause,
+  SupportedImageMimeType,
   VisionTranscriber,
 } from '../../domain/services/InfrastructureInterfaces';
+import { normalizeImage } from '../services/ImageNormalizer';
 import { logger } from '../../shared/logger';
 
 const MAX_TRANSCRIPTION_TOKENS = 4096;
@@ -57,9 +59,10 @@ export class AnthropicDocumentProcessor implements VisionTranscriber, AIClauseSe
 
   public async transcribeImage(
     buffer: Buffer,
-    mimeType: 'image/png' | 'image/jpeg',
+    mimeType: SupportedImageMimeType,
   ): Promise<string> {
     try {
+      const normalized = normalizeImage(buffer, mimeType);
       const response = await this.client.messages.create({
         model: this.model,
         max_tokens: MAX_TRANSCRIPTION_TOKENS,
@@ -72,8 +75,8 @@ export class AnthropicDocumentProcessor implements VisionTranscriber, AIClauseSe
                 type: 'image',
                 source: {
                   type: 'base64',
-                  media_type: mimeType,
-                  data: buffer.toString('base64'),
+                  media_type: normalized.mimeType,
+                  data: normalized.buffer.toString('base64'),
                 },
               },
               { type: 'text', text: 'Transcribe the contract image.' },

@@ -152,6 +152,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const contractRouter = createContractRouter({
     uploadContractUseCase,
     contractRepository,
+    fileStorage,
     analysisWorker,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,

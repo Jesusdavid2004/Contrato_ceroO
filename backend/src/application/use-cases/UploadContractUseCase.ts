@@ -32,7 +32,7 @@ export class UploadContractUseCase {
     const contractId = `contract-${crypto.randomUUID()}`;
 
     // 3. Store file according to privacy retention policy (none|7d|30d)
-    await this.fileStorage.store(contractId, validated.buffer, validated.detectedMime);
+    const storageUri = await this.fileStorage.store(contractId, validated.buffer, validated.detectedMime);
 
     // 4. Create Contract entity in UPLOADED status
     const contract = new Contract({
@@ -40,6 +40,7 @@ export class UploadContractUseCase {
       ownerId: input.userId,
       title: input.title?.trim() || sanitizedFileName,
       fileName: sanitizedFileName,
+      storageUri,
       contractType: input.contractType || 'OTHER',
       jurisdiction: input.jurisdiction || 'CO',
       locale: input.locale || 'es',

@@ -1,12 +1,13 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect, ReactNode } from 'react';
+export { useAuth } from './useAuth';
 
-interface User {
+export interface User {
   id: string;
   name: string;
   email: string;
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
@@ -17,7 +18,7 @@ interface AuthContextType {
   clearError: () => void;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? '';
 
@@ -30,7 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Verify stored token on mount
   useEffect(() => {
     if (!token) return;
-    fetch(`${API_URL}/api/auth/me`, {
+    fetch(`${API_URL}/api/v1/auth/me`, {
+      credentials: 'include',
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.ok ? r.json() : Promise.reject())
@@ -45,15 +47,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/auth/login`, {
+      const res = await fetch(`${API_URL}/api/v1/auth/login`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
-      localStorage.setItem('cc_token', data.token);
-      setToken(data.token);
+      const tokenValue = data.token || data.accessToken;
+      localStorage.setItem('cc_token', tokenValue);
+      setToken(tokenValue);
       setUser(data.user);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -67,15 +71,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_URL}/api/auth/register`, {
+      const res = await fetch(`${API_URL}/api/v1/auth/register`, {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
-      localStorage.setItem('cc_token', data.token);
-      setToken(data.token);
+      const tokenValue = data.token || data.accessToken;
+      localStorage.setItem('cc_token', tokenValue);
+      setToken(tokenValue);
       setUser(data.user);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed');
@@ -86,6 +92,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    fetch(`${API_URL}/api/v1/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => {});
     localStorage.removeItem('cc_token');
     setToken(null);
     setUser(null);
@@ -98,10 +108,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside AuthProvider');
-  return ctx;
 }

@@ -13,6 +13,7 @@ export interface ContractProps {
   ownerId: string;
   title: string;
   fileName: string;
+  storageUri?: string | null;
   contractType: ContractType;
   jurisdiction: Jurisdiction;
   locale: string;
@@ -28,6 +29,7 @@ export class Contract {
   public readonly ownerId: string;
   public readonly title: string;
   public readonly fileName: string;
+  public readonly storageUri: string | null;
   public readonly contractType: ContractType;
   public readonly jurisdiction: Jurisdiction;
   public readonly locale: string;
@@ -42,6 +44,7 @@ export class Contract {
     this.ownerId = props.ownerId;
     this.title = props.title;
     this.fileName = props.fileName;
+    this.storageUri = props.storageUri ?? null;
     this.contractType = props.contractType;
     this.jurisdiction = props.jurisdiction;
     this.locale = props.locale;
@@ -137,6 +140,7 @@ export class Contract {
       uploaded_at: this.uploadedAt.toISOString(),
       clauses: this._clauses.map((c) => c.toJSON()),
       failure_reason: this._failureReason,
+      storage_uri: this.storageUri,
     };
   }
 }

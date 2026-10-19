@@ -2,9 +2,10 @@ const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? '';
 const STATUS_POLL_INTERVAL_MS = 500;
 const ANALYSIS_TIMEOUT_MS = 60_000;
 
-interface ContractClauseResponse {
+export interface ContractClauseResponse {
   id: string;
   original_text: string;
+  text?: string;
   risk_level: 'low' | 'medium' | 'high';
   plain_explanation: string;
   confidence: number;
@@ -81,6 +82,7 @@ function getErrorKey(responseBody: unknown): string {
 
 async function requestJson(url: string, token: string, init?: RequestInit): Promise<unknown> {
   const response = await fetch(url, {
+    credentials: 'include',
     ...init,
     headers: {
       ...init?.headers,

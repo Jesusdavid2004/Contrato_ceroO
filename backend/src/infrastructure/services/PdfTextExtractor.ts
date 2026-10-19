@@ -1,6 +1,6 @@
 import { PDFParse, VerbosityLevel } from 'pdf-parse';
 import { FileTooManyPagesError, TextExtractionFailedError } from '../../domain/exceptions/index';
-import type { TextExtractor, VisionTranscriber } from '../../domain/services/InfrastructureInterfaces';
+import type { SupportedImageMimeType, TextExtractor, VisionTranscriber } from '../../domain/services/InfrastructureInterfaces';
 import { logger } from '../../shared/logger';
 import { FileValidator } from './FileValidator';
 
@@ -29,7 +29,7 @@ export class PdfTextExtractor implements TextExtractor {
 
   private async extractImageText(
     buffer: Buffer,
-    mimeType: 'image/png' | 'image/jpeg',
+    mimeType: SupportedImageMimeType,
   ): Promise<string> {
     return this.requireMeaningfulText(await this.visionTranscriber.transcribeImage(buffer, mimeType));
   }

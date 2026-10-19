@@ -8,6 +8,7 @@
     "build": "vite build",
     "lint": "oxlint",
     "i18n:check": "node scripts/check-i18n.js",
+    "type-check": "tsc --noEmit",
     "test:e2e": "playwright test",
     "preview": "vite preview"
   },
@@ -33,6 +34,7 @@
     "oxlint": "^1.81.0",
     "postcss": "^8.5.29",
     "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
     "vite": "^8.3.0"
   }
 }

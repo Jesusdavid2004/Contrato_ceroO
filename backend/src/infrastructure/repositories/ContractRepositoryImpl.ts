@@ -9,7 +9,7 @@ export class PostgresContractRepository implements ContractRepository {
 
   public async findById(id: string): Promise<Contract | null> {
     const contractRes = await this.pool.query(
-      `SELECT id, user_id, title, file_name, contract_type, jurisdiction, locale,
+      `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts WHERE id = $1`,
       [id],
@@ -45,6 +45,7 @@ export class PostgresContractRepository implements ContractRepository {
       ownerId: row.user_id,
       title: row.title,
       fileName: row.file_name,
+      storageUri: row.storage_uri,
       contractType: row.contract_type,
       jurisdiction: row.jurisdiction,
       locale: row.locale,
@@ -58,7 +59,7 @@ export class PostgresContractRepository implements ContractRepository {
 
   public async findByOwnerId(ownerId: string): Promise<Contract[]> {
     const res = await this.pool.query(
-      `SELECT id, user_id, title, file_name, contract_type, jurisdiction, locale,
+      `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts WHERE user_id = $1 ORDER BY uploaded_at DESC`,
       [ownerId],
@@ -71,6 +72,7 @@ export class PostgresContractRepository implements ContractRepository {
           ownerId: row.user_id,
           title: row.title,
           fileName: row.file_name,
+          storageUri: row.storage_uri,
           contractType: row.contract_type,
           jurisdiction: row.jurisdiction,
           locale: row.locale,
@@ -89,18 +91,20 @@ export class PostgresContractRepository implements ContractRepository {
       await client.query('BEGIN');
 
       await client.query(
-        `INSERT INTO contracts (id, user_id, title, file_name, contract_type, jurisdiction,
+        `INSERT INTO contracts (id, user_id, title, file_name, storage_uri, contract_type, jurisdiction,
                                locale, status, global_risk_score, uploaded_at, failure_reason)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
          ON CONFLICT (id) DO UPDATE SET
            status = EXCLUDED.status,
            global_risk_score = EXCLUDED.global_risk_score,
-           failure_reason = EXCLUDED.failure_reason`,
+           failure_reason = EXCLUDED.failure_reason,
+           storage_uri = COALESCE(EXCLUDED.storage_uri, contracts.storage_uri)`,
         [
           contract.id,
           contract.ownerId,
           contract.title,
           contract.fileName,
+          contract.storageUri,
           contract.contractType,
           contract.jurisdiction,
           contract.locale,

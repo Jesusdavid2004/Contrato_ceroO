@@ -21,8 +21,16 @@ export interface AIClauseSegmenter {
   segment(text: string): Promise<SegmentedClause[]>;
 }
 
+export type SupportedImageMimeType =
+  | 'image/png'
+  | 'image/jpeg'
+  | 'image/webp'
+  | 'image/gif'
+  | 'image/tiff'
+  | 'image/bmp';
+
 export interface VisionTranscriber {
-  transcribeImage(buffer: Buffer, mimeType: 'image/png' | 'image/jpeg'): Promise<string>;
+  transcribeImage(buffer: Buffer, mimeType: SupportedImageMimeType): Promise<string>;
 }
 
 export interface AIClassificationCache {

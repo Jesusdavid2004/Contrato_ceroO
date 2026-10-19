@@ -16,9 +16,12 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
+import type { FileStorage } from '../../domain/services/InfrastructureInterfaces';
+
 export function createContractRouter(deps: {
   uploadContractUseCase: UploadContractUseCase;
   contractRepository: ContractRepository;
+  fileStorage?: FileStorage;
   analysisWorker?: InProcessAnalysisWorker;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
@@ -130,6 +133,12 @@ export function createContractRouter(deps: {
         throw new ContractOwnershipError(contractId);
       }
 
+      if (deps.fileStorage) {
+        if (contract.storageUri) {
+          await deps.fileStorage.delete(contract.storageUri);
+        }
+        await deps.fileStorage.delete(contractId);
+      }
       await deps.contractRepository.delete(contractId);
       res.status(200).json({ message: 'Contract deleted' });
     } catch (err) {
