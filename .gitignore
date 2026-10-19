@@ -6,6 +6,8 @@ node_modules/
 dist/
 */dist/
 dist-ssr/
+.next/
+*/.next/
 frontend/test-results/
 frontend/playwright-report/
 
