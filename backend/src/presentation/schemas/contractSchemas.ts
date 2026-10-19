@@ -1,0 +1,36 @@
+import { z } from 'zod';
+
+export const contractTypeSchema = z.enum(['LEASE', 'SERVICE', 'EMPLOYMENT', 'OTHER']);
+
+export const uploadContractBodySchema = z.object({
+  title: z.string().trim().max(255).optional(),
+  contract_type: contractTypeSchema.optional(),
+  contractType: contractTypeSchema.optional(),
+  jurisdiction: z
+    .string()
+    .trim()
+    .min(2, 'Jurisdiction must be at least 2 characters')
+    .max(10, 'Jurisdiction must not exceed 10 characters')
+    .toUpperCase()
+    .optional()
+    .default('CO'),
+  locale: z.enum(['es', 'en']).optional().default('es'),
+});
+
+export const updateLetterBodySchema = z.object({
+  content: z
+    .string()
+    .trim()
+    .min(1, 'Letter content is required')
+    .refine(
+      (text) => text.split(/\s+/).filter(Boolean).length <= 350,
+      'Letter content must not exceed 350 words',
+    ),
+});
+
+export const contractIdParamSchema = z.object({
+  id: z.string().min(1, 'Contract ID is required'),
+});
+
+export type UploadContractBodyDTO = z.infer<typeof uploadContractBodySchema>;
+export type UpdateLetterBodyDTO = z.infer<typeof updateLetterBodySchema>;

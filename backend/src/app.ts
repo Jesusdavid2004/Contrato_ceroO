@@ -3,6 +3,10 @@ import Anthropic from '@anthropic-ai/sdk';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yaml';
+import fs from 'node:fs';
+import path from 'node:path';
 import { config } from './shared/config';
 import { errorHandler } from './shared/errors/errorHandler';
 import { logger } from './shared/logger';
@@ -141,6 +145,22 @@ export function createApp(options?: { inMemory?: boolean }) {
     }
   });
 
+  // OpenAPI Specification and Swagger UI Documentation
+  const openApiSpec = loadOpenApiSpec();
+  if (openApiSpec) {
+    app.get(['/openapi.json', '/api/v1/openapi.json'], (_req, res) => {
+      res.status(200).json(openApiSpec);
+    });
+    app.use(
+      ['/docs', '/api/v1/docs'],
+      swaggerUi.serve,
+      swaggerUi.setup(openApiSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: 'ContratoClaro API Documentation',
+      }),
+    );
+  }
+
   // Mount API v1 Routes
   const authRouter = createAuthRouter({
     registerUserUseCase,
@@ -171,6 +191,27 @@ export function createApp(options?: { inMemory?: boolean }) {
   app.use(errorHandler);
 
   return app;
+}
+
+function loadOpenApiSpec(): Record<string, unknown> | null {
+  const possiblePaths = [
+    path.resolve(process.cwd(), 'docs', 'openapi.yaml'),
+    path.resolve(process.cwd(), '..', 'docs', 'openapi.yaml'),
+    path.resolve(__dirname, '../../../docs/openapi.yaml'),
+    path.resolve(__dirname, '../../docs/openapi.yaml'),
+    path.resolve(__dirname, '../docs/openapi.yaml'),
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      try {
+        const file = fs.readFileSync(p, 'utf8');
+        return YAML.parse(file) as Record<string, unknown>;
+      } catch (e) {
+        logger.warn('Failed to parse openapi.yaml', { error: String(e) });
+      }
+    }
+  }
+  return null;
 }
 
 export const app = createApp();

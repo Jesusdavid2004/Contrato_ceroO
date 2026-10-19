@@ -10,13 +10,15 @@ import { FileValidator } from '../../infrastructure/services/FileValidator';
 import type { GenerateObjectionLetterUseCase } from '../../application/use-cases/GenerateObjectionLetterUseCase';
 import type { DownloadObjectionLetterPdfUseCase } from '../../application/use-cases/DownloadObjectionLetterPdfUseCase';
 import type { UpdateObjectionLetterUseCase } from '../../application/use-cases/UpdateObjectionLetterUseCase';
+import type { FileStorage } from '../../domain/services/InfrastructureInterfaces';
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import type { FileStorage } from '../../domain/services/InfrastructureInterfaces';
+import { uploadContractBodySchema, updateLetterBodySchema } from '../schemas/contractSchemas';
+import { validateBody } from '../middleware/validationMiddleware';
 
 export function createContractRouter(deps: {
   uploadContractUseCase: UploadContractUseCase;
@@ -46,14 +48,16 @@ export function createContractRouter(deps: {
           return;
         }
 
+        const validatedBody = uploadContractBodySchema.parse(req.body || {});
+
         const result = await deps.uploadContractUseCase.execute({
           userId: req.user!.id,
           fileBuffer: req.file.buffer,
           originalName: req.file.originalname,
-          contractType: req.body.contract_type || req.body.contractType,
-          jurisdiction: req.body.jurisdiction,
-          locale: req.body.locale,
-          title: req.body.title,
+          contractType: validatedBody.contract_type || validatedBody.contractType,
+          jurisdiction: validatedBody.jurisdiction as any,
+          locale: validatedBody.locale,
+          title: validatedBody.title,
         });
         if (deps.analysisWorker) {
           const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
@@ -187,18 +191,23 @@ export function createContractRouter(deps: {
     }
   });
 
-  router.put('/:id/letter', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const letter = await deps.updateObjectionLetterUseCase.execute({
-        contractId: String(req.params.id),
-        userId: req.user!.id,
-        content: typeof req.body?.content === 'string' ? req.body.content : '',
-      });
-      res.status(200).json(letter.toJSON());
-    } catch (err) {
-      next(err);
-    }
-  });
+  router.put(
+    '/:id/letter',
+    requireAuth,
+    validateBody(updateLetterBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const letter = await deps.updateObjectionLetterUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+          content: req.body.content,
+        });
+        res.status(200).json(letter.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   return router;
 }

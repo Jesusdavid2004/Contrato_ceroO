@@ -168,6 +168,7 @@ paths:
       security:
         - bearerAuth: []
       summary: Upload a contract and enqueue analysis
+      description: Accepts documents in PDF, PNG, JPEG, WebP, TIFF, BMP, or GIF format up to 10MB.
       requestBody:
         required: true
         content:
@@ -179,6 +180,7 @@ paths:
                 contract:
                   type: string
                   format: binary
+                  description: File payload (PDF, PNG, JPEG, WEBP, TIFF, BMP, GIF).
                 title:
                   type: string
                 contract_type:
@@ -362,6 +364,42 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /health:
+    get:
+      tags: [System]
+      operationId: getHealth
+      security: []
+      summary: Liveness probe
+      responses:
+        "200":
+          description: Backend is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+  /ready:
+    get:
+      tags: [System]
+      operationId: getReadiness
+      security: []
+      summary: Readiness probe
+      responses:
+        "200":
+          description: Backend and dependencies are ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ready
+        "503":
+          description: Service unavailable
 components:
   securitySchemes:
     bearerAuth:
@@ -459,6 +497,8 @@ components:
           type: string
           format: date-time
         failure_reason:
+          type: [string, "null"]
+        storage_uri:
           type: [string, "null"]
         clauses:
           type: array
