@@ -65,6 +65,7 @@ export class LocalDocumentProcessor implements VisionTranscriber, AIClauseSegmen
       if (error instanceof TextExtractionFailedError) throw error;
       logger.warn('Local OCR transcription failed', {
         errorName: error instanceof Error ? error.name : 'UnknownError',
+        errorMessage: error instanceof Error ? error.message : String(error),
       });
       throw new TextExtractionFailedError('local_ocr_unavailable');
     } finally {

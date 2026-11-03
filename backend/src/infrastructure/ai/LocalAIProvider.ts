@@ -175,6 +175,7 @@ export class LocalAIProvider implements AIProvider {
       if (error instanceof AIProviderUnavailableError) throw error;
       logger.warn('Local neural classification failed', {
         errorName: error instanceof Error ? error.name : 'UnknownError',
+        errorMessage: error instanceof Error ? error.message : String(error),
       });
       throw new AIProviderUnavailableError();
     }

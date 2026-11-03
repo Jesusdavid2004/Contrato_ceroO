@@ -24,6 +24,7 @@ export class InProcessAnalysisWorker {
           logger.error('Contract analysis job failed', {
             contractId: input.contractId,
             errorName: error instanceof Error ? error.name : 'UnknownError',
+            errorMessage: error instanceof Error ? error.message : String(error),
           });
         })
         .finally(() => {
