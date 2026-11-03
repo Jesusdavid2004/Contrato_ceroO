@@ -29,7 +29,7 @@ existing frontend. The unauthenticated liveness and readiness checks are
 | PUT | `/contracts/:id/letter` | Bearer access token | Save letter edits |
 | GET | `/contracts/:id/letter/pdf` | Bearer access token | Download the latest letter PDF |
 
-Upload accepts PDF, PNG, or JPEG files up to 10 MiB. The API checks file magic
+Upload accepts PDF, PNG, JPEG, WebP, TIFF, BMP, or GIF files up to 10 MiB. The API checks file magic
 bytes and returns analysis status separately from the upload response.
 
 ## Errors
