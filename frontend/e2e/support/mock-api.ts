@@ -72,14 +72,16 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
       name: 'Alex Rivera',
       email: 'alex@example.test',
     };
+    // The backend serves versioned (/api/v1/*) and legacy (/api/*) aliases.
+    const path = url.pathname.replace(/^\/api\/v1\//, '/api/');
 
-    if (url.pathname === '/api/auth/register' && method === 'POST') {
+    if (path === '/api/auth/register' && method === 'POST') {
       return json({ user, accessToken: 'e2e-access-token', token: 'e2e-access-token' }, 201);
     }
-    if (url.pathname === '/api/auth/me' && method === 'GET') {
+    if (path === '/api/auth/me' && method === 'GET') {
       return json({ user });
     }
-    if (url.pathname === '/api/contracts' && method === 'GET' && options.includeHistory) {
+    if (path === '/api/contracts' && method === 'GET' && options.includeHistory) {
       return json([{
         id: 'contract-history-e2e',
         title: 'Synthetic demo lease',
@@ -89,7 +91,7 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
         uploaded_at: '2026-10-13T12:00:00.000Z',
       }]);
     }
-    if (url.pathname === '/api/contracts/contract-history-e2e' && method === 'GET') {
+    if (path === '/api/contracts/contract-history-e2e' && method === 'GET') {
       state.contractWasReadBack = true;
       return json({
         id: 'contract-history-e2e',
@@ -98,11 +100,11 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
         clauses: [RISKY_CLAUSE, SAFE_CLAUSE],
       });
     }
-    if (url.pathname === '/api/contracts/contract-history-e2e' && method === 'DELETE') {
+    if (path === '/api/contracts/contract-history-e2e' && method === 'DELETE') {
       state.historyContractWasDeleted = true;
       return json({ message: 'Contract deleted' });
     }
-    if (url.pathname === '/api/contracts' && method === 'POST') {
+    if (path === '/api/contracts' && method === 'POST') {
       state.uploadCount += 1;
       if (options.failFirstUpload && state.uploadCount === 1) {
         return json({ code: 'TemporaryError', message_key: 'errors.api_error' }, 503);
@@ -112,10 +114,10 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
       }
       return json({ id: 'contract-e2e', status: 'UPLOADED' }, 201);
     }
-    if (url.pathname === '/api/contracts/contract-e2e/status' && method === 'GET') {
+    if (path === '/api/contracts/contract-e2e/status' && method === 'GET') {
       return json({ status: 'READY', failure_message_key: null });
     }
-    if (url.pathname === '/api/contracts/contract-e2e' && method === 'GET') {
+    if (path === '/api/contracts/contract-e2e' && method === 'GET') {
       state.contractWasReadBack = true;
       const clauses = options.flagged === false
         ? [SAFE_CLAUSE]
@@ -127,7 +129,7 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
         clauses,
       });
     }
-    if (url.pathname === '/api/contracts/contract-e2e/letter' && method === 'POST') {
+    if (path === '/api/contracts/contract-e2e/letter' && method === 'POST') {
       state.generatedLetterCount += 1;
       return json({
         id: 'letter-e2e',
@@ -137,7 +139,7 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
         created_at: '2026-10-13T12:00:00.000Z',
       }, 201);
     }
-    if (url.pathname === '/api/contracts/contract-e2e/letter' && method === 'PUT') {
+    if (path === '/api/contracts/contract-e2e/letter' && method === 'PUT') {
       const payload = request.postDataJSON() as { content?: unknown };
       if (typeof payload.content !== 'string' || !payload.content.trim()) {
         return json({ code: 'ValidationError', message_key: 'errors.objection_letter_invalid' }, 422);
@@ -151,7 +153,7 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
         created_at: '2026-10-13T12:01:00.000Z',
       });
     }
-    if (url.pathname === '/api/contracts/contract-e2e/letter/pdf' && method === 'GET') {
+    if (path === '/api/contracts/contract-e2e/letter/pdf' && method === 'GET') {
       state.letterWasDownloaded = true;
       return route.fulfill({
         status: 200,
