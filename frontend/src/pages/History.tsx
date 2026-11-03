@@ -143,7 +143,7 @@ export function History() {
       )}
 
       {loadingError && (
-        <div role="alert" className="floating-card flex items-center justify-between gap-4 !border-red-200 text-red-600 dark:!border-red-500/20 dark:text-red-300">
+        <div role="alert" className="floating-card flex items-center justify-between gap-4 border-red-200! text-red-600 dark:border-red-500/20! dark:text-red-300">
           <span className="text-[14px] font-medium">{t(loadingError, { defaultValue: t('errors.api_error') })}</span>
           <button
             type="button"
@@ -188,7 +188,7 @@ export function History() {
                 initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.25, delay: Math.min(index * 0.04, 0.2) }}
-                className="floating-card flex items-center gap-4 !p-4"
+                className="floating-card flex items-center gap-4 p-4!"
               >
                 <span className="hidden rounded-[14px] bg-[var(--color-surface-2)] p-3 sm:block">
                   <FileText aria-hidden="true" className="h-5 w-5 text-[var(--color-action)]" />

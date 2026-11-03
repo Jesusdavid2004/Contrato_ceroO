@@ -85,7 +85,7 @@ export function Settings() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
         aria-label={t('settings.appearance', 'Appearance')}
-        className="floating-panel !p-0"
+        className="floating-panel p-0!"
       >
         <h2 className="px-5 pb-1 pt-5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
           {t('settings.appearance', 'Appearance')}
@@ -119,7 +119,7 @@ export function Settings() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.06 }}
         aria-label={t('settings.notifications', 'Notifications')}
-        className="floating-panel !p-0"
+        className="floating-panel p-0!"
       >
         <h2 className="px-5 pb-1 pt-5 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
           {t('settings.notifications', 'Notifications')}
@@ -137,7 +137,7 @@ export function Settings() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.12 }}
         aria-label={t('settings.danger_zone', 'Danger zone')}
-        className="floating-panel !border-red-200 !p-0 dark:!border-red-500/20"
+        className="floating-panel border-red-200! p-0! dark:border-red-500/20!"
       >
         <h2 className="px-5 pb-1 pt-5 text-[11px] font-bold uppercase tracking-[0.08em] text-red-500">
           {t('settings.danger_zone', 'Danger zone')}

@@ -16,7 +16,7 @@ export function ClauseCard({ clause, defaultOpen = false }: { clause: ContractCl
   const level = riskLevelOf(clause.risk_level);
 
   return (
-    <article className="floating-card !p-0">
+    <article className="floating-card p-0!">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}

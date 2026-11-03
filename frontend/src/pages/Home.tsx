@@ -61,7 +61,7 @@ export function Home() {
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.08 }}
-        className="floating-panel !p-4 sm:!p-5"
+        className="floating-panel p-4! sm:p-5!"
       >
         <FileDropzone isUploading={isUploading} onFile={(f) => void uploadFile(f)} />
         {uploadError && (
