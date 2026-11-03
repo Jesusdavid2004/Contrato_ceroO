@@ -24,7 +24,16 @@ export const pool = new Pool({
       port: config.DB_PORT,
       ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
     }),
-  max: 20,
+  // Single replica against a small managed database: few pooled connections.
+  max: 10,
+  // Close idle clients before proxies/NAT can silently drop them.
   idleTimeoutMillis: 30000,
+  // Fail fast instead of hanging the single worker on a dead connection.
   connectionTimeoutMillis: 10000,
+  // Abort runaway queries so one bad request cannot wedge the replica.
+  statement_timeout: 30000,
+  query_timeout: 35000,
+  // TCP keepalives so pooled connections survive idle periods behind proxies.
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10000,
 });
