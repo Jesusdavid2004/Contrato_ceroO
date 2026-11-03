@@ -22,6 +22,8 @@ import { AdaptiveClauseSegmenter } from './infrastructure/services/AdaptiveClaus
 import { AnthropicAIProvider } from './infrastructure/ai/AnthropicAIProvider';
 import { AnthropicDocumentProcessor } from './infrastructure/ai/AnthropicDocumentProcessor';
 import { FakeAIProvider } from './infrastructure/ai/FakeAIProvider';
+import { LocalAIProvider } from './infrastructure/ai/LocalAIProvider';
+import { LocalDocumentProcessor } from './infrastructure/ai/LocalDocumentProcessor';
 import { OfflineDocumentProcessor } from './infrastructure/ai/OfflineDocumentProcessor';
 import { InMemoryAIClassificationCache } from './infrastructure/services/InMemoryAIClassificationCache';
 import { InProcessAnalysisWorker } from './infrastructure/services/InProcessAnalysisWorker';
@@ -74,7 +76,10 @@ export function createApp(options?: { inMemory?: boolean }) {
     : null;
   const documentProcessor = anthropicClient
     ? new AnthropicDocumentProcessor(anthropicClient, config.AI_MODEL_FAST)
-    : new OfflineDocumentProcessor();
+    : isInMemory
+      ? new OfflineDocumentProcessor()
+      : new LocalDocumentProcessor(config.EMBEDDING_CACHE_DIR);
+  const localEmbedder = new HuggingFaceLocalEmbeddingProvider(config.EMBEDDING_CACHE_DIR);
   const aiProvider = anthropicClient
     ? new AnthropicAIProvider(anthropicClient, {
       fastModel: config.AI_MODEL_FAST,
@@ -82,7 +87,16 @@ export function createApp(options?: { inMemory?: boolean }) {
       maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
       timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
     })
-    : new FakeAIProvider();
+    : isInMemory
+      ? new FakeAIProvider()
+      : new LocalAIProvider(localEmbedder);
+  if (anthropicClient) {
+    logger.info('AI provider active', { provider: 'anthropic' });
+  } else if (isInMemory) {
+    logger.info('AI provider active', { provider: 'fake-test-double' });
+  } else {
+    logger.info('AI provider active', { provider: 'local-neural' });
+  }
   const regexClauseSegmenter = new RegexClauseSegmenter();
   const clauseSegmenter = new AdaptiveClauseSegmenter(regexClauseSegmenter, documentProcessor);
   const textExtractor = new PdfTextExtractor(documentProcessor);
