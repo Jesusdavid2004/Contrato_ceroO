@@ -1,15 +1,16 @@
-import { useTranslation } from 'react-i18next';
-import { motion } from 'framer-motion';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Eye, EyeOff, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { motion } from 'framer-motion';
+import { AlertCircle, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '../components/ui/Button';
+import { TextField, PasswordField } from '../components/ui/Fields';
 
 export function Login() {
   const { t } = useTranslation();
   const { login, isLoading, error, clearError } = useAuth();
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -25,96 +26,64 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-[85vh] flex items-center justify-center">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <div className="glass rounded-3xl p-8 space-y-6">
-          <div className="flex flex-col items-center space-y-2 mb-2">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/40 rounded-2xl">
-              <ShieldCheck className="h-10 w-10 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h1 className="text-2xl font-bold">{t('auth.login_title', 'Welcome back')}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 text-center">
-              {t('auth.login_subtitle', 'Sign in to analyze your contracts')}
-            </p>
-          </div>
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="floating-panel"
+    >
+      <div className="flex flex-col items-center gap-1.5 text-center">
+        <span className="mb-2 flex h-12 w-12 items-center justify-center rounded-[17px] bg-[var(--color-action-soft)]">
+          <ShieldCheck className="h-6 w-6 text-[var(--color-action)]" />
+        </span>
+        <h1 className="text-[24px] font-bold tracking-tight">{t('auth.login_title', 'Welcome back')}</h1>
+        <p className="text-[14px] text-[var(--color-text-muted)]">
+          {t('auth.login_subtitle', 'Sign in to analyze your contracts')}
+        </p>
+      </div>
 
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center space-x-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 px-4 py-3 rounded-xl text-sm"
-            >
-              <AlertCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{error}</span>
-            </motion.div>
-          )}
-
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                {t('auth.email', 'Email')}
-              </label>
-              <input
-                id="login-email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
-                placeholder="you@example.com"
-              />
-            </div>
-
-            <div className="space-y-1">
-              <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                {t('auth.password', 'Password')}
-              </label>
-              <div className="relative">
-                <input
-                  id="login-password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all pr-12"
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-
-            <button
-              id="login-submit"
-              type="submit"
-              disabled={isLoading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white py-3 rounded-xl font-semibold transition-all shadow-lg shadow-blue-500/25 hover:scale-[1.02] flex items-center justify-center space-x-2"
-            >
-              {isLoading ? (
-                <><Loader2 className="h-5 w-5 animate-spin" /><span>{t('auth.signing_in', 'Signing in...')}</span></>
-              ) : (
-                <><span>{t('auth.login', 'Log In')}</span><ArrowRight className="h-5 w-5" /></>
-              )}
-            </button>
-          </form>
-
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-            {t('auth.no_account', "Don't have an account?")}{' '}
-            <Link to="/register" className="text-blue-600 dark:text-blue-400 hover:underline font-medium">
-              {t('auth.register_link', 'Sign up free')}
-            </Link>
-          </p>
+      {error && (
+        <div
+          role="alert"
+          className="mt-5 flex items-center gap-2 rounded-[14px] border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-600 dark:border-red-500/20 dark:bg-red-500/10 dark:text-red-300"
+        >
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          <span>{error}</span>
         </div>
-      </motion.div>
-    </div>
+      )}
+
+      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <TextField
+          id="login-email"
+          label={t('auth.email', 'Email')}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          placeholder="you@example.com"
+          autoComplete="email"
+        />
+        <PasswordField
+          id="login-password"
+          label={t('auth.password', 'Password')}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          placeholder="••••••••"
+          autoComplete="current-password"
+        />
+        <Button id="login-submit" type="submit" size="lg" loading={isLoading} className="w-full">
+          {!isLoading && <ArrowRight className="h-4 w-4" />}
+          {isLoading ? t('auth.signing_in', 'Signing in...') : t('auth.login', 'Log In')}
+        </Button>
+      </form>
+
+      <p className="mt-6 text-center text-[13px] text-[var(--color-text-muted)]">
+        {t('auth.no_account', "Don't have an account?")}{' '}
+        <Link to="/register" className="font-semibold text-[var(--color-action)] hover:underline">
+          {t('auth.register_link', 'Sign up free')}
+        </Link>
+      </p>
+    </motion.div>
   );
 }
