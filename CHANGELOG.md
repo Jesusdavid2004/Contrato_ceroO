@@ -4,7 +4,12 @@ Notable changes to ContratoClaro are documented here.
 
 ## [Unreleased]
 
-Nothing yet.
+### Removed
+
+- Anthropic adapter, SDK dependency, and related config/docs. The AI stack is
+  now local neural models by default with an optional free Gemini tier
+  (`AI_PROVIDER=gemini|local|fake`); Claude references remain only in
+  historical audit documents.
 
 ## [1.0.0] - 2026-11-03
 
