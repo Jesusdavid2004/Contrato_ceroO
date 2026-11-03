@@ -2,8 +2,10 @@
  * gRPC server for ClauseAnalysisService.
  *
  * This internal service handles structured clause analysis orchestration
- * over HTTP/2 (gRPC protocol). It is NOT exposed publicly; Express routes
- * call it via the ClauseAnalysisGrpcClient adapter.
+ * over HTTP/2 (gRPC protocol). It is NOT exposed publicly and is NOT wired
+ * into the production analysis path (see docs/grpc.md for the Phase B3
+ * verdict); it serves as a versioned contract, diagnostic tool, and
+ * classroom demo of Protobuf + HTTP/2 + deadlines + canonical errors.
  *
  * Transport: @grpc/grpc-js (pure Node.js, no native deps)
  * Auth:      Service-to-service token check via metadata interceptor

@@ -3,6 +3,19 @@
 Internal service over HTTP/2 (`@grpc/grpc-js` + `@grpc/proto-loader`).
 Not exposed publicly. Express calls it through `ClauseAnalysisGrpcClient`.
 
+## Status (Phase B3 verdict)
+
+The service is **implemented, tested, and documented, but NOT wired into the
+production analysis path**: `AnalyzeContractUseCase` calls the configured
+`AIProvider` directly, and `startGrpcServer` is never invoked by `server.ts`.
+This is deliberate for now — the rule-based demo scoring inside the gRPC
+server must not silently replace the neural/hosted providers in production.
+
+Adoption path (not yet done): start the server with a supervised port,
+inject `ClauseAnalysisGrpcClient` into the analysis flow behind a feature
+flag, and compare its output against the `AIProvider` result before promoting
+it beyond diagnostics and contract demos.
+
 ## Proto
 
 `proto/clause_analysis.proto` defines `ClauseAnalysisService`:
