@@ -1,18 +1,32 @@
 import { ReactNode } from 'react';
-import { Navbar } from './Navbar';
+import { AppSidebar } from './AppSidebar';
+import { AppHeader } from './AppHeader';
+import { useAuth } from '../context/AuthContext';
 
 export function Layout({ children }: { children: ReactNode }) {
-  return (
-    <div className="min-h-screen transition-colors duration-300" style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}>
-      {/* Ambient background gradient */}
-      <div className="fixed inset-0 z-[-1] pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-400/20 dark:bg-blue-600/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-indigo-400/20 dark:bg-indigo-600/10 rounded-full blur-3xl" />
+  const { user } = useAuth();
+
+  if (!user) {
+    return (
+      <div
+        className="flex min-h-screen items-center justify-center px-4 py-10"
+        style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
+      >
+        <div className="w-full max-w-md">{children}</div>
       </div>
-      <Navbar />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
-      </main>
+    );
+  }
+
+  return (
+    <div
+      className="mx-auto flex min-h-screen w-full max-w-[1200px] gap-5 px-4 py-4 sm:px-6"
+      style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
+    >
+      <AppSidebar />
+      <div className="min-w-0 flex-1 pb-24 md:pb-10">
+        <AppHeader />
+        <main className="mx-auto w-full max-w-[880px] px-1 pt-6 sm:px-2">{children}</main>
+      </div>
     </div>
   );
 }
