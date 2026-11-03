@@ -4,6 +4,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import { FakeAIProvider } from '../src/infrastructure/ai/FakeAIProvider';
 import { LocalAIProvider } from '../src/infrastructure/ai/LocalAIProvider';
 import { AnthropicAIProvider } from '../src/infrastructure/ai/AnthropicAIProvider';
+import { GeminiAIProvider } from '../src/infrastructure/ai/GeminiAIProvider';
 import { HuggingFaceLocalEmbeddingProvider } from '../src/infrastructure/ai/HuggingFaceLocalEmbeddingProvider';
 import type { AIProvider } from '../src/domain/services/AIProvider';
 import { config } from '../src/shared/config';
@@ -128,6 +129,26 @@ async function main(): Promise<void> {
       name: 'anthropic (hosted Claude, tool use + Zod)',
       status: 'skipped',
       detail: 'ANTHROPIC_API_KEY is not set; no external call was made.',
+    });
+  }
+
+  if (config.GEMINI_API_KEY) {
+    results.push(await measure(
+      'gemini (hosted Gemini, JSON mode + Zod)',
+      new GeminiAIProvider({
+        apiKey: config.GEMINI_API_KEY,
+        fastModel: config.GEMINI_MODEL_FAST,
+        smartModel: config.GEMINI_MODEL_SMART,
+        maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
+        timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
+      }),
+      dataset.contracts,
+    ));
+  } else {
+    results.push({
+      name: 'gemini (hosted Gemini, JSON mode + Zod)',
+      status: 'skipped',
+      detail: 'GEMINI_API_KEY is not set; no external call was made.',
     });
   }
 

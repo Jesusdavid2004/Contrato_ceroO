@@ -59,7 +59,7 @@ Required application settings:
 | `JWT_SECRET` | Secret-manager value, at least 16 characters, never a sample/default |
 | `CORS_ORIGIN` | Exact HTTPS origin of the browser frontend |
 | `ANTHROPIC_API_KEY` | Optional; secret-manager value only if the hosted provider is wanted. Empty = local neural AI (models download once to `EMBEDDING_CACHE_DIR`, then run offline) |
-| `AI_PROVIDER` | Explicit provider: `anthropic` (needs key), `local` (default blueprint value, no API), never `fake` in production |
+| `AI_PROVIDER` | Explicit provider: `anthropic`/`gemini` (needs its key), `local` (default blueprint, no API), never `fake` in production. Empty = hybrid: local classifies, hosted key (if any) refines + writes |
 | `CONTRACT_FILE_RETENTION` | `none`; retained files are blocked until encrypted private object storage exists |
 | `RAG_ENABLED` | `false` by default; enable only after legal corpus and pgvector readiness review |
 | `EMBEDDING_CACHE_DIR` | Writable persistent cache if RAG is enabled |

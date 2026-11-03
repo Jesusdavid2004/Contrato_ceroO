@@ -7,7 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yaml';
 import fs from 'node:fs';
 import path from 'node:path';
-import { config, resolveAIProvider } from './shared/config';
+import { config, resolveTierProviders } from './shared/config';
 import { errorHandler } from './shared/errors/errorHandler';
 import { logger } from './shared/logger';
 
@@ -23,6 +23,9 @@ import { AnthropicAIProvider } from './infrastructure/ai/AnthropicAIProvider';
 import { AnthropicDocumentProcessor } from './infrastructure/ai/AnthropicDocumentProcessor';
 import { FakeAIProvider } from './infrastructure/ai/FakeAIProvider';
 import { LocalAIProvider } from './infrastructure/ai/LocalAIProvider';
+import { TieredAIProvider } from './infrastructure/ai/TieredAIProvider';
+import { GeminiAIProvider } from './infrastructure/ai/GeminiAIProvider';
+import { GeminiDocumentProcessor } from './infrastructure/ai/GeminiDocumentProcessor';
 import { LocalDocumentProcessor } from './infrastructure/ai/LocalDocumentProcessor';
 import { OfflineDocumentProcessor } from './infrastructure/ai/OfflineDocumentProcessor';
 import { InMemoryAIClassificationCache } from './infrastructure/services/InMemoryAIClassificationCache';
@@ -75,27 +78,46 @@ export function createApp(options?: { inMemory?: boolean }) {
   const anthropicClient = config.ANTHROPIC_API_KEY
     ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
     : null;
-  const activeProvider = isInMemory ? 'fake' : resolveAIProvider();
-  const documentProcessor = activeProvider === 'anthropic' && anthropicClient
-    ? new AnthropicDocumentProcessor(anthropicClient, config.AI_MODEL_FAST)
-    : activeProvider === 'local'
-      ? new LocalDocumentProcessor(config.EMBEDDING_CACHE_DIR)
-      : new OfflineDocumentProcessor();
+  // Hybrid AI wiring: the fast tier classifies every clause (local model unless
+  // overridden); the smart tier (low-confidence rechecks + letters) uses a
+  // hosted provider when a key is configured, otherwise the local model.
+  const tiers = isInMemory ? { fast: 'fake' as const, smart: 'fake' as const } : resolveTierProviders();
   const localEmbedder = new HuggingFaceLocalEmbeddingProvider(config.EMBEDDING_CACHE_DIR);
-  const aiProvider = activeProvider === 'anthropic' && anthropicClient
-    ? new AnthropicAIProvider(anthropicClient, {
-      fastModel: config.AI_MODEL_FAST,
-      smartModel: config.AI_MODEL_SMART,
-      maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
-      timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
-    })
-    : activeProvider === 'local'
-      ? new LocalAIProvider(localEmbedder)
-      : new FakeAIProvider();
-  if (activeProvider === 'anthropic' && !anthropicClient) {
-    throw new Error('AI_PROVIDER=anthropic requires ANTHROPIC_API_KEY.');
-  }
-  logger.info('AI provider active', { provider: activeProvider });
+  const buildProvider = (name: typeof tiers.fast | typeof tiers.smart) => {
+    switch (name) {
+      case 'anthropic':
+        if (!anthropicClient) throw new Error('AI_PROVIDER=anthropic requires ANTHROPIC_API_KEY.');
+        return new AnthropicAIProvider(anthropicClient, {
+          fastModel: config.AI_MODEL_FAST,
+          smartModel: config.AI_MODEL_SMART,
+          maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
+          timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
+        });
+      case 'gemini':
+        if (!config.GEMINI_API_KEY) throw new Error('AI_PROVIDER=gemini requires GEMINI_API_KEY.');
+        return new GeminiAIProvider({
+          apiKey: config.GEMINI_API_KEY,
+          fastModel: config.GEMINI_MODEL_FAST,
+          smartModel: config.GEMINI_MODEL_SMART,
+          maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
+          timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
+        });
+      case 'fake':
+        return new FakeAIProvider();
+      default:
+        return new LocalAIProvider(localEmbedder);
+    }
+  };
+  const aiProvider = new TieredAIProvider(buildProvider(tiers.fast), buildProvider(tiers.smart));
+  const activeProvider = tiers.fast === tiers.smart ? tiers.fast : `${tiers.fast}+${tiers.smart}`;
+  logger.info('AI providers active', { fast: tiers.fast, smart: tiers.smart });
+  const documentProcessor = tiers.smart === 'anthropic' && anthropicClient
+    ? new AnthropicDocumentProcessor(anthropicClient, config.AI_MODEL_FAST)
+    : tiers.smart === 'gemini' && config.GEMINI_API_KEY
+      ? new GeminiDocumentProcessor(config.GEMINI_API_KEY, config.GEMINI_MODEL_FAST)
+      : tiers.smart === 'local'
+        ? new LocalDocumentProcessor(config.EMBEDDING_CACHE_DIR)
+        : new OfflineDocumentProcessor();
   const regexClauseSegmenter = new RegexClauseSegmenter();
   const clauseSegmenter = new AdaptiveClauseSegmenter(regexClauseSegmenter, documentProcessor);
   const textExtractor = new PdfTextExtractor(documentProcessor);

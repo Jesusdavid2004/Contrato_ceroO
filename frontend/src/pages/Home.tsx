@@ -28,7 +28,10 @@ export function Home() {
     void fetch('/api/ready')
       .then((res) => (res.ok ? res.json() : null))
       .then((body: { provider?: string } | null) => {
-        if (!cancelled && body?.provider === 'anthropic') setExternalAi(true);
+        const provider = body?.provider ?? '';
+        if (!cancelled && provider !== '' && provider !== 'local' && provider !== 'fake') {
+          setExternalAi(true);
+        }
       })
       .catch(() => {});
     return () => {

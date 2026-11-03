@@ -153,10 +153,12 @@ readable in GitHub's Mermaid renderer.
   scoring and lifecycle rules; infrastructure contains PostgreSQL, AI,
   extraction, storage, and PDF adapters.
 - Repository and AI interfaces keep application logic independent of concrete
-  PostgreSQL and AI implementations. `LocalAIProvider` (multilingual embeddings
-  + local TrOCR, zero external APIs) is the offline default; `FakeAIProvider`
-  is the deterministic test double; Anthropic is used only when
-  `ANTHROPIC_API_KEY` is configured.
+  PostgreSQL and AI implementations. The default is hybrid: `LocalAIProvider`
+  (multilingual embeddings + local TrOCR, zero external APIs) classifies every
+  clause, and a hosted adapter (Anthropic Claude or Google Gemini, whichever
+  key is configured) rechecks uncertain clauses and writes letters via
+  `TieredAIProvider`. Set `AI_PROVIDER` to force a single provider;
+  `FakeAIProvider` is the deterministic test double.
 - The worker and classification cache are process-local. Run exactly one
   backend replica until work is moved to a durable queue and shared cache.
 - Production startup rejects the deterministic demo provider and non-ephemeral

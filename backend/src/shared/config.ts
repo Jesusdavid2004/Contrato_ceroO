@@ -27,13 +27,16 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   AI_MODEL_FAST: z.string().default('claude-3-5-haiku-20241022'),
   AI_MODEL_SMART: z.string().default('claude-3-5-sonnet-20241022'),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_MODEL_FAST: z.string().default('gemini-2.0-flash'),
+  GEMINI_MODEL_SMART: z.string().default('gemini-2.5-flash'),
   AI_MAX_TOKENS_CLASSIFICATION: z.coerce.number().int().positive().default(8192),
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   DAILY_AI_QUOTA: z.coerce.number().int().positive().default(20),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   GRPC_INTERNAL_TOKEN: z.string().default('dev-internal-token'),
   GRPC_PORT: z.coerce.number().int().positive().default(50051),
-  AI_PROVIDER: z.enum(['anthropic', 'local', 'fake']).optional(),
+  AI_PROVIDER: z.enum(['anthropic', 'gemini', 'local', 'fake']).optional(),
   ANALYSIS_JOB_TIMEOUT_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
   SEED_DEMO: z
     .string()
@@ -76,7 +79,7 @@ const envSchema = z.object({
     context.addIssue({
       code: 'custom',
       path: ['AI_PROVIDER'],
-      message: 'The deterministic fake provider is a test double and must never run in production. Use anthropic or local.',
+      message: 'The deterministic fake provider is a test double and must never run in production. Use anthropic, gemini, or local.',
     });
   }
 });
@@ -91,16 +94,30 @@ if (!parsed.success) {
 export const config = parsed.data;
 export type Config = typeof config;
 
-export type AIProviderName = 'anthropic' | 'local' | 'fake';
+export type AIProviderName = 'anthropic' | 'gemini' | 'local' | 'fake';
+export type LocalTierName = 'local' | 'fake';
+
+export interface TierSelection {
+  /** Bulk classification of every clause: local model unless overridden. */
+  fast: AIProviderName;
+  /** Low-confidence rechecks and objection letters: hosted when keyed. */
+  smart: AIProviderName;
+}
 
 /**
- * Resolves the active AI provider. Explicit AI_PROVIDER wins; otherwise tests
- * use the fake double, keyed environments use Anthropic, and everything else
- * (including production without a key) uses the local neural provider.
+ * Resolves per-tier providers so the local model and the hosted API work
+ * together. An explicit AI_PROVIDER forces a single provider for both tiers
+ * (tests always use the fake double); otherwise the fast tier stays local
+ * and the smart tier uses Anthropic or Gemini when a key is configured.
  */
-export function resolveAIProvider(environment: Config = config): AIProviderName {
-  if (environment.AI_PROVIDER) return environment.AI_PROVIDER;
-  if (environment.NODE_ENV === 'test') return 'fake';
-  if (environment.ANTHROPIC_API_KEY) return 'anthropic';
-  return 'local';
+export function resolveTierProviders(environment: Config = config): TierSelection {
+  if (environment.NODE_ENV === 'test') return { fast: 'fake', smart: 'fake' };
+  if (environment.AI_PROVIDER === 'fake' || environment.AI_PROVIDER === 'local') {
+    return { fast: environment.AI_PROVIDER, smart: environment.AI_PROVIDER };
+  }
+  if (environment.AI_PROVIDER === 'anthropic') return { fast: 'anthropic', smart: 'anthropic' };
+  if (environment.AI_PROVIDER === 'gemini') return { fast: 'gemini', smart: 'gemini' };
+  if (environment.ANTHROPIC_API_KEY) return { fast: 'local', smart: 'anthropic' };
+  if (environment.GEMINI_API_KEY) return { fast: 'local', smart: 'gemini' };
+  return { fast: 'local', smart: 'local' };
 }
