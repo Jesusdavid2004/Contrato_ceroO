@@ -34,14 +34,30 @@
    that the text is a synthetic example and that legal references are shown
    only when supplied by the configured legal context.
 4. **Prepare the objection:** Generate the letter. Show that it includes only
-   medium/high-risk clauses, edit one sentence, and save the change.
-5. **Demonstrate language and theme:** Switch the interface to English and back
-   to Spanish; change the theme and confirm the preference remains visible.
+   medium/high-risk clauses, edit the recipient placeholder, save the change,
+   and copy the text to the clipboard.
+5. **Demonstrate language and theme:** In the header, switch the interface to
+   English (note dates, scores, and percentages reformat via `Intl`) and back
+   to Spanish; use the header or Settings switch to change light/dark and
+   reload the page to prove there is no theme flash and the choice persists.
 6. **Download:** Download the saved letter as PDF and verify the updated wording.
-7. **Explain privacy:** State that the demo stores synthetic structured results,
-   does not store an original upload, and uses `FakeAIProvider` when no
-   Anthropic API key is set. Do not represent the offline evaluation as model
-   accuracy.
+7. **Explain privacy and AI:** State that the demo stores synthetic structured
+   results, does not store an original upload, and runs a hybrid pipeline by
+   default (local neural model classifies; a hosted provider only refines
+   uncertain clauses and writes letters when `ANTHROPIC_API_KEY` or
+   `GEMINI_API_KEY` is set — otherwise everything stays on-device). Mention
+   the external-AI consent notice shown before upload in that case. Do not
+   represent the offline evaluation as model accuracy.
+8. **Show resilience (optional):** Restart the backend mid-analysis to show the
+   stuck-job recovery marking the contract `FAILED` with a translated message
+   instead of polling forever.
+
+## Offline fallback
+
+If the room has no internet, restart the backend with
+`AI_PROVIDER=fake docker compose up --build -d backend` (deterministic rule
+double, no model downloads) and run the same script. The `/ready` endpoint
+reports the active provider so the audience can verify which mode is live.
 
 ## Reset and Cleanup
 

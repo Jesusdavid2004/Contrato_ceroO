@@ -117,7 +117,7 @@ export function Home() {
             transition={{ duration: 0.3, delay: 0.12 + i * 0.06 }}
             className="floating-card flex h-full flex-col"
           >
-            <span className="inline-flex rounded-[13px] bg-[var(--color-action-soft)] p-2.5">
+            <span className="inline-flex self-start rounded-[13px] bg-[var(--color-action-soft)] p-2.5">
               <Icon aria-hidden="true" className="h-5 w-5 text-[var(--color-action-text)]" />
             </span>
             <h2 className="mt-3 text-[15px] font-bold">{t(titleKey)}</h2>
