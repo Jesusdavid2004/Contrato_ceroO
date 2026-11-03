@@ -1,6 +1,6 @@
 # High-risk classification evaluation
 
-**Generated:** 2026-10-13T20:46:32.373Z
+**Generated:** 2026-11-03T00:36:30.856Z
 **Evaluation mode:** deterministic offline FakeAIProvider; no external AI service or personal contract data is used.
 **Dataset:** 5 synthetic, de-identified contract scenarios; binary expected labels are for HIGH risk only.
 

@@ -6,6 +6,20 @@ Notable changes to ContratoClaro are documented here.
 
 ### Added
 
+- Internal gRPC `ClauseAnalysisService` (proto + server + client adapter),
+  deterministic scoring, `docs/grpc.md`, and `grpc-clause-analysis` tests.
+- Frontend Web Worker file pre-hash (`postMessage`) and INP observer with
+  Task vs Microtask demo helper for class evidence.
+- `docs/testing.md` with backend/frontend/gRPC/manual release checklist.
+- `GRPC_PORT` and `GRPC_INTERNAL_TOKEN` configuration.
+
+### Fixed
+
+- OpenAPI 3.1 warnings: added `info.license` and `logout` 429 response.
+- Corrected `frontend/index.html` entry to `main.tsx` and added no-flash
+  theme bootstrap script.
+- Corrected `docs/api.md` upload formats (PDF, PNG, JPEG, WebP, TIFF, BMP, GIF).
+- CI now runs backend `build` and frontend `type-check`.
 - Containerized local PostgreSQL/pgvector, backend, and frontend stack with
   health checks and local-only port bindings.
 - Production multi-stage backend image, non-root runtime, and ignore rules for
