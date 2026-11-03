@@ -19,14 +19,14 @@ export function Privacy() {
     >
       <Link
         to="/"
-        className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-action)]"
+        className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-action-text)]"
       >
         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         ContratoClaro
       </Link>
       <div className="floating-panel">
         <span className="inline-flex rounded-[13px] bg-[var(--color-action-soft)] p-2.5">
-          <ShieldCheck aria-hidden="true" className="h-5 w-5 text-[var(--color-action)]" />
+          <ShieldCheck aria-hidden="true" className="h-5 w-5 text-[var(--color-action-text)]" />
         </span>
         <h1 className="mt-3 text-[24px] font-bold tracking-tight">{t('privacy.title')}</h1>
         <p className="mt-1 text-[14px] text-[var(--color-text-muted)]">{t('privacy.intro')}</p>

@@ -1,6 +1,6 @@
 # Accessibility audit (axe-core, WCAG 2.0/2.1 A+AA)
 
-**Generated:** 2026-11-03T16:26:53.763Z
+**Generated:** 2026-11-03T16:45:29.110Z
 **Scope:** Home, History, Settings, Results, Login, Privacy, light and dark themes.
 
 | Page | Theme | Violations | Serious/Critical |

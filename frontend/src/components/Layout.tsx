@@ -15,7 +15,7 @@ export function Layout({ children }: { children: ReactNode }) {
         className="flex min-h-svh items-center justify-center px-4 py-10"
         style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
       >
-        <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'}`}>{children}</div>
+        <main className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'}`}>{children}</main>
       </div>
     );
   }
