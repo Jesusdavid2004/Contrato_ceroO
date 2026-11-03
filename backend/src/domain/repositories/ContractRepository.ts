@@ -6,6 +6,7 @@ export interface ContractRepository {
   findByOwnerId(ownerId: string): Promise<Contract[]>;
   save(contract: Contract): Promise<void>;
   updateStatus(id: string, status: string, failureReason?: string | null): Promise<void>;
+  findStuckContracts(olderThan: Date): Promise<Contract[]>;
   delete(id: string): Promise<void>;
   saveObjectionLetter(letter: ObjectionLetter): Promise<void>;
   getObjectionLetter(contractId: string): Promise<ObjectionLetter | null>;

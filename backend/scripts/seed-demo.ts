@@ -14,6 +14,9 @@ async function main(): Promise<void> {
   if (config.NODE_ENV !== 'development') {
     throw new Error('Demo data can only be seeded when NODE_ENV=development.');
   }
+  if (!config.SEED_DEMO) {
+    throw new Error('Refusing to seed demo data without SEED_DEMO=true.');
+  }
 
   const email = process.env.DEMO_USER_EMAIL?.trim().toLowerCase();
   const password = process.env.DEMO_USER_PASSWORD;

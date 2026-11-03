@@ -121,6 +121,11 @@ export class Contract {
     this._failureReason = null;
   }
 
+  public markExtracting(): void {
+    this._status = 'EXTRACTING';
+    this._failureReason = null;
+  }
+
   public markFailed(reason?: string): void {
     this._status = 'FAILED';
     this._failureReason = reason ?? null;

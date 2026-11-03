@@ -42,7 +42,7 @@ Nginx `/api/health`).
 ## Manual checklist before `v1.0.0`
 
 1. `docker compose up --build -d`, `docker compose ps` healthy.
-2. `docker compose exec backend node dist/scripts/seed-demo.js` idempotent.
+2. `docker compose exec -e SEED_DEMO=true backend node dist/scripts/seed-demo.js` idempotent.
 3. Register/login/upload/poll/result/letter/PDF/delete with synthetic data.
 4. Switch en/es + light/dark/system, no flash on reload.
 5. `npm run evaluate` unchanged or reviewed.

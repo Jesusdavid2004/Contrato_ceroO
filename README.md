@@ -28,7 +28,7 @@ repository checks outside the containers.
 
    ```powershell
    docker compose ps
-   docker compose exec backend node dist/scripts/seed-demo.js
+   docker compose exec -e SEED_DEMO=true backend node dist/scripts/seed-demo.js
    ```
 
 4. Open `http://localhost:8080` and sign in with the demo credentials from
@@ -92,6 +92,7 @@ put real contract data or production credentials into the demo environment.
 | `CORS_ORIGIN` | Exact browser origin allowed by the backend | `http://localhost:8080` |
 | `NODE_ENV` | Runtime mode | `development` |
 | `ANTHROPIC_API_KEY` | Optional hosted provider (transcription/classification/letter) | Empty; local neural AI is used, no external API needed |
+| `AI_PROVIDER` | `anthropic`, `local` or `fake` (empty = auto) | `local` |
 | `RAG_ENABLED` | Enable legal provision retrieval | `false` |
 | `CONTRACT_FILE_RETENTION` | Original upload retention | `none` |
 | `DEMO_USER_EMAIL` | Local synthetic demo account | `demo@example.test` |

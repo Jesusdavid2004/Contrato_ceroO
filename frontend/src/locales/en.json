@@ -98,6 +98,7 @@
   "settings.delete_account": "Delete account",
   "settings.delete_account_desc": "Permanently remove all your data",
   "errors.analysis_failed": "Contract analysis failed. Please try again.",
+  "errors.analysis_interrupted": "Analysis was interrupted before finishing. Please upload the contract again.",
   "errors.analysis_timeout": "Analysis is taking too long. Please try again.",
   "errors.daily_quota_exceeded": "You have reached your daily analysis limit.",
   "errors.text_extraction_failed": "We could not read the text in this contract.",

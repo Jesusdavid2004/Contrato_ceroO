@@ -33,6 +33,12 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   GRPC_INTERNAL_TOKEN: z.string().default('dev-internal-token'),
   GRPC_PORT: z.coerce.number().int().positive().default(50051),
+  AI_PROVIDER: z.enum(['anthropic', 'local', 'fake']).optional(),
+  ANALYSIS_JOB_TIMEOUT_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
+  SEED_DEMO: z
+    .string()
+    .optional()
+    .transform((val) => val === 'true'),
 }).superRefine((environment, context) => {
   if (environment.NODE_ENV !== 'production') return;
 
@@ -66,6 +72,13 @@ const envSchema = z.object({
       message: 'Production file retention is unavailable until encrypted private object storage is configured. Set CONTRACT_FILE_RETENTION=none.',
     });
   }
+  if (environment.AI_PROVIDER === 'fake') {
+    context.addIssue({
+      code: 'custom',
+      path: ['AI_PROVIDER'],
+      message: 'The deterministic fake provider is a test double and must never run in production. Use anthropic or local.',
+    });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -77,3 +90,17 @@ if (!parsed.success) {
 
 export const config = parsed.data;
 export type Config = typeof config;
+
+export type AIProviderName = 'anthropic' | 'local' | 'fake';
+
+/**
+ * Resolves the active AI provider. Explicit AI_PROVIDER wins; otherwise tests
+ * use the fake double, keyed environments use Anthropic, and everything else
+ * (including production without a key) uses the local neural provider.
+ */
+export function resolveAIProvider(environment: Config = config): AIProviderName {
+  if (environment.AI_PROVIDER) return environment.AI_PROVIDER;
+  if (environment.NODE_ENV === 'test') return 'fake';
+  if (environment.ANTHROPIC_API_KEY) return 'anthropic';
+  return 'local';
+}

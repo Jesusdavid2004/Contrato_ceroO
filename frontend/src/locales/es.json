@@ -98,6 +98,7 @@
   "settings.delete_account": "Eliminar cuenta",
   "settings.delete_account_desc": "Elimina permanentemente todos tus datos",
   "errors.analysis_failed": "No se pudo analizar el contrato. Inténtalo de nuevo.",
+  "errors.analysis_interrupted": "El análisis se interrumpió antes de terminar. Vuelve a subir el contrato.",
   "errors.analysis_timeout": "El análisis está tardando demasiado. Inténtalo de nuevo.",
   "errors.daily_quota_exceeded": "Has alcanzado el límite diario de análisis.",
   "errors.text_extraction_failed": "No pudimos leer el texto de este contrato.",

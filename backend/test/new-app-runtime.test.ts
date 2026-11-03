@@ -5,11 +5,11 @@ import { createApp } from '../src/app';
 describe('Layered backend API compatibility', () => {
   const app = createApp({ inMemory: true });
 
-  it('reports the in-memory application as ready', async () => {
+  it('reports the in-memory application as ready with the fake test provider', async () => {
     const response = await request(app).get('/ready');
 
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ status: 'ready' });
+    expect(response.body).toEqual({ status: 'ready', provider: 'fake' });
   });
 
   it('preserves the health liveness endpoint', async () => {

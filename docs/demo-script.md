@@ -18,7 +18,7 @@
 3. Seed the development account and contract (safe to repeat):
 
    ```powershell
-   docker compose exec backend node dist/scripts/seed-demo.js
+   docker compose exec -e SEED_DEMO=true backend node dist/scripts/seed-demo.js
    ```
 
 4. Open `http://localhost:8080`; sign in using the demo credentials from `.env`.

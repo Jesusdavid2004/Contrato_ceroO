@@ -98,7 +98,8 @@ export class PostgresContractRepository implements ContractRepository {
            status = EXCLUDED.status,
            global_risk_score = EXCLUDED.global_risk_score,
            failure_reason = EXCLUDED.failure_reason,
-           storage_uri = COALESCE(EXCLUDED.storage_uri, contracts.storage_uri)`,
+           storage_uri = COALESCE(EXCLUDED.storage_uri, contracts.storage_uri),
+           status_updated_at = NOW()`,
         [
           contract.id,
           contract.ownerId,
@@ -150,8 +151,40 @@ export class PostgresContractRepository implements ContractRepository {
 
   public async updateStatus(id: string, status: string, failureReason?: string | null): Promise<void> {
     await this.pool.query(
-      'UPDATE contracts SET status = $1, failure_reason = $2 WHERE id = $3',
+      `UPDATE contracts
+       SET status = $1, failure_reason = $2, status_updated_at = NOW()
+       WHERE id = $3`,
       [status, failureReason ?? null, id],
+    );
+  }
+
+  public async findStuckContracts(olderThan: Date): Promise<Contract[]> {
+    const res = await this.pool.query(
+      `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
+              status, global_risk_score, uploaded_at, failure_reason
+       FROM contracts
+       WHERE status IN ('EXTRACTING', 'ANALYZING') AND status_updated_at < $1
+       ORDER BY status_updated_at ASC`,
+      [olderThan],
+    );
+
+    return res.rows.map(
+      (row) =>
+        new Contract({
+          id: row.id,
+          ownerId: row.user_id,
+          title: row.title,
+          fileName: row.file_name,
+          storageUri: row.storage_uri,
+          contractType: row.contract_type,
+          jurisdiction: row.jurisdiction,
+          locale: row.locale,
+          status: row.status,
+          globalRiskScore: row.global_risk_score,
+          uploadedAt: new Date(row.uploaded_at),
+          failureReason: row.failure_reason,
+          clauses: [],
+        }),
     );
   }
 
@@ -188,6 +221,9 @@ export class PostgresContractRepository implements ContractRepository {
 export class InMemoryContractRepository implements ContractRepository {
   private contracts = new Map<string, Contract>();
   private letters = new Map<string, ObjectionLetter>();
+  private statusChangedAt = new Map<string, Date>();
+
+  constructor(private readonly clock: () => Date = () => new Date()) {}
 
   public async findById(id: string): Promise<Contract | null> {
     return this.contracts.get(id) || null;
@@ -198,15 +234,31 @@ export class InMemoryContractRepository implements ContractRepository {
   }
 
   public async save(contract: Contract): Promise<void> {
+    if (!this.contracts.has(contract.id)) {
+      this.statusChangedAt.set(contract.id, this.clock());
+    }
     this.contracts.set(contract.id, contract);
   }
 
   public async updateStatus(id: string, status: string, failureReason?: string | null): Promise<void> {
     const contract = this.contracts.get(id);
-    if (contract) {
-      if (status === 'READY') contract.markReady();
-      else if (status === 'FAILED') contract.markFailed(failureReason ?? undefined);
-    }
+    if (!contract) return;
+    if (status === 'UPLOADED') {
+      // No entity transition for the initial state; timestamp refresh only.
+    } else if (status === 'EXTRACTING') contract.markExtracting();
+    else if (status === 'ANALYZING') contract.markAnalyzing();
+    else if (status === 'READY') contract.markReady();
+    else if (status === 'FAILED') contract.markFailed(failureReason ?? undefined);
+    else return;
+    this.statusChangedAt.set(id, this.clock());
+  }
+
+  public async findStuckContracts(olderThan: Date): Promise<Contract[]> {
+    return [...this.contracts.values()].filter(
+      (c) =>
+        (c.status === 'EXTRACTING' || c.status === 'ANALYZING') &&
+        (this.statusChangedAt.get(c.id) ?? c.uploadedAt) < olderThan,
+    );
   }
 
   public async delete(id: string): Promise<void> {

@@ -7,7 +7,7 @@ import swaggerUi from 'swagger-ui-express';
 import YAML from 'yaml';
 import fs from 'node:fs';
 import path from 'node:path';
-import { config } from './shared/config';
+import { config, resolveAIProvider } from './shared/config';
 import { errorHandler } from './shared/errors/errorHandler';
 import { logger } from './shared/logger';
 
@@ -35,6 +35,7 @@ import { PostgresLegalContextProvider } from './infrastructure/services/Postgres
 // Use Cases
 import { RegisterUserUseCase, LoginUseCase } from './application/use-cases/AuthUseCases';
 import { RefreshSessionUseCase, DeleteAccountUseCase } from './application/use-cases/SessionUseCases';
+import { RecoverStuckContractsUseCase } from './application/use-cases/RecoverStuckContractsUseCase';
 import { UploadContractUseCase } from './application/use-cases/UploadContractUseCase';
 import { AnalyzeContractUseCase } from './application/use-cases/AnalyzeContractUseCase';
 import { GenerateObjectionLetterUseCase } from './application/use-cases/GenerateObjectionLetterUseCase';
@@ -74,29 +75,27 @@ export function createApp(options?: { inMemory?: boolean }) {
   const anthropicClient = config.ANTHROPIC_API_KEY
     ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
     : null;
-  const documentProcessor = anthropicClient
+  const activeProvider = isInMemory ? 'fake' : resolveAIProvider();
+  const documentProcessor = activeProvider === 'anthropic' && anthropicClient
     ? new AnthropicDocumentProcessor(anthropicClient, config.AI_MODEL_FAST)
-    : isInMemory
-      ? new OfflineDocumentProcessor()
-      : new LocalDocumentProcessor(config.EMBEDDING_CACHE_DIR);
+    : activeProvider === 'local'
+      ? new LocalDocumentProcessor(config.EMBEDDING_CACHE_DIR)
+      : new OfflineDocumentProcessor();
   const localEmbedder = new HuggingFaceLocalEmbeddingProvider(config.EMBEDDING_CACHE_DIR);
-  const aiProvider = anthropicClient
+  const aiProvider = activeProvider === 'anthropic' && anthropicClient
     ? new AnthropicAIProvider(anthropicClient, {
       fastModel: config.AI_MODEL_FAST,
       smartModel: config.AI_MODEL_SMART,
       maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
       timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
     })
-    : isInMemory
-      ? new FakeAIProvider()
-      : new LocalAIProvider(localEmbedder);
-  if (anthropicClient) {
-    logger.info('AI provider active', { provider: 'anthropic' });
-  } else if (isInMemory) {
-    logger.info('AI provider active', { provider: 'fake-test-double' });
-  } else {
-    logger.info('AI provider active', { provider: 'local-neural' });
+    : activeProvider === 'local'
+      ? new LocalAIProvider(localEmbedder)
+      : new FakeAIProvider();
+  if (activeProvider === 'anthropic' && !anthropicClient) {
+    throw new Error('AI_PROVIDER=anthropic requires ANTHROPIC_API_KEY.');
   }
+  logger.info('AI provider active', { provider: activeProvider });
   const regexClauseSegmenter = new RegexClauseSegmenter();
   const clauseSegmenter = new AdaptiveClauseSegmenter(regexClauseSegmenter, documentProcessor);
   const textExtractor = new PdfTextExtractor(documentProcessor);
@@ -121,6 +120,21 @@ export function createApp(options?: { inMemory?: boolean }) {
   );
   const analysisWorker = new InProcessAnalysisWorker(analysisUseCase);
 
+  // Startup recovery: jobs interrupted by a restart can never complete.
+  void new RecoverStuckContractsUseCase(
+    contractRepository,
+    config.ANALYSIS_JOB_TIMEOUT_MS,
+  )
+    .execute()
+    .then((recovered) => {
+      if (recovered > 0) logger.info('Recovered stuck analysis jobs', { recovered });
+    })
+    .catch((error: unknown) => {
+      logger.error('Stuck job recovery failed', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+    });
+
   // Instantiate Use Cases
   const registerUserUseCase = new RegisterUserUseCase(userRepository);
   const loginUseCase = new LoginUseCase(userRepository);
@@ -144,13 +158,13 @@ export function createApp(options?: { inMemory?: boolean }) {
 
   app.get(['/ready', '/api/ready'], async (_req, res) => {
     if (isInMemory) {
-      res.status(200).json({ status: 'ready' });
+      res.status(200).json({ status: 'ready', provider: activeProvider });
       return;
     }
 
     try {
       await pool.query('SELECT 1');
-      res.status(200).json({ status: 'ready' });
+      res.status(200).json({ status: 'ready', provider: activeProvider });
     } catch (error) {
       logger.warn('Backend readiness check failed', {
         errorName: error instanceof Error ? error.name : 'UnknownError',

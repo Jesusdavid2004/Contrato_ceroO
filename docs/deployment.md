@@ -26,7 +26,7 @@ repository tests outside containers.
 
    ```powershell
    docker compose ps
-   docker compose exec backend node dist/scripts/seed-demo.js
+   docker compose exec -e SEED_DEMO=true backend node dist/scripts/seed-demo.js
    ```
 
 4. Open `http://localhost:8080` and sign in with `DEMO_USER_EMAIL` and
@@ -59,6 +59,7 @@ Required application settings:
 | `JWT_SECRET` | Secret-manager value, at least 16 characters, never a sample/default |
 | `CORS_ORIGIN` | Exact HTTPS origin of the browser frontend |
 | `ANTHROPIC_API_KEY` | Optional; secret-manager value only if the hosted provider is wanted. Empty = local neural AI (models download once to `EMBEDDING_CACHE_DIR`, then run offline) |
+| `AI_PROVIDER` | Explicit provider: `anthropic` (needs key), `local` (default blueprint value, no API), never `fake` in production |
 | `CONTRACT_FILE_RETENTION` | `none`; retained files are blocked until encrypted private object storage exists |
 | `RAG_ENABLED` | `false` by default; enable only after legal corpus and pgvector readiness review |
 | `EMBEDDING_CACHE_DIR` | Writable persistent cache if RAG is enabled |
