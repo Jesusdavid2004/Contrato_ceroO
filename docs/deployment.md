@@ -1,5 +1,8 @@
 # Deployment Guide
 
+Step-by-step Railway runbook (recommended path, verified against the repo):
+[`railway-deployment-guide.md`](./railway-deployment-guide.md).
+
 ## Deployment Status
 
 There is no public HTTPS deployment yet. The repository does not identify a
