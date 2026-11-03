@@ -12,8 +12,10 @@ penetration test or a legal compliance certification.
   letter routes enforce ownership before returning user data.
 - Database access uses parameterized PostgreSQL queries. Centralized API errors
   return a code and translation key rather than provider stack traces.
-- The production backend requires an explicitly configured JWT secret, CORS
-  origin, and Anthropic API key. It rejects non-ephemeral file retention.
+- The production backend requires an explicitly configured JWT secret and CORS
+  origin. With no `ANTHROPIC_API_KEY` it uses the local neural provider
+  (on-device embeddings + OCR); the deterministic `FakeAIProvider` test double
+  is rejected in production. It rejects non-ephemeral file retention.
 - Nginx sets `X-Content-Type-Options`, `Referrer-Policy`, and `X-Frame-Options`.
   The deployment ingress must enforce HTTPS and HSTS.
 

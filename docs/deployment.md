@@ -58,7 +58,7 @@ Required application settings:
 | `DATABASE_URL` | Private PostgreSQL connection URL; require TLS for managed DB |
 | `JWT_SECRET` | Secret-manager value, at least 16 characters, never a sample/default |
 | `CORS_ORIGIN` | Exact HTTPS origin of the browser frontend |
-| `ANTHROPIC_API_KEY` | Secret-manager value; required by production startup |
+| `ANTHROPIC_API_KEY` | Optional; secret-manager value only if the hosted provider is wanted. Empty = local neural AI (models download once to `EMBEDDING_CACHE_DIR`, then run offline) |
 | `CONTRACT_FILE_RETENTION` | `none`; retained files are blocked until encrypted private object storage exists |
 | `RAG_ENABLED` | `false` by default; enable only after legal corpus and pgvector readiness review |
 | `EMBEDDING_CACHE_DIR` | Writable persistent cache if RAG is enabled |

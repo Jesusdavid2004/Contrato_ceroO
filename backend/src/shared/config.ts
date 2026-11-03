@@ -57,13 +57,8 @@ const envSchema = z.object({
       message: 'CORS_ORIGIN must be explicitly configured in production.',
     });
   }
-  if (!environment.ANTHROPIC_API_KEY) {
-    context.addIssue({
-      code: 'custom',
-      path: ['ANTHROPIC_API_KEY'],
-      message: 'ANTHROPIC_API_KEY must be configured in production; the demo provider is not suitable for live analysis.',
-    });
-  }
+  // ANTHROPIC_API_KEY is optional: without it the backend uses the local
+  // neural provider (embeddings + local OCR), no external API is required.
   if (environment.CONTRACT_FILE_RETENTION !== 'none') {
     context.addIssue({
       code: 'custom',

@@ -3,8 +3,10 @@
 ## Backend (`backend/`)
 
 - `npm run type-check` — strict TypeScript, no emit.
-- `npm test` — Vitest unit + integration suites. AI tests use
-  `FakeAIProvider` (deterministic, offline). DB-backed suites run against
+- `npm test` — Vitest unit + integration suites. AI tests use the
+  deterministic `FakeAIProvider` test double with a stubbed embedder
+  (`test/local-ai-provider.test.ts` covers the local neural ranking without
+  downloading models), so the suite stays offline. DB-backed suites run against
   the Compose PostgreSQL/pgvector instance.
 - `npm run build` — `tsc -p tsconfig.build.json`.
 - `npm run evaluate` — regenerates `docs/evaluation.md` from the synthetic

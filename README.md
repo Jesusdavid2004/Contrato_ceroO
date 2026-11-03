@@ -91,15 +91,16 @@ put real contract data or production credentials into the demo environment.
 | `JWT_SECRET` | Signs access and refresh tokens | Local-only sample; replace before use |
 | `CORS_ORIGIN` | Exact browser origin allowed by the backend | `http://localhost:8080` |
 | `NODE_ENV` | Runtime mode | `development` |
-| `ANTHROPIC_API_KEY` | Hosted transcription/classification/letter provider | Empty; FakeAIProvider is used locally |
+| `ANTHROPIC_API_KEY` | Optional hosted provider (transcription/classification/letter) | Empty; local neural AI is used, no external API needed |
 | `RAG_ENABLED` | Enable legal provision retrieval | `false` |
 | `CONTRACT_FILE_RETENTION` | Original upload retention | `none` |
 | `DEMO_USER_EMAIL` | Local synthetic demo account | `demo@example.test` |
 | `DEMO_USER_PASSWORD` | Local demo password; at least 12 characters | Must be set |
 
-Production additionally requires `DATABASE_URL`, an explicitly set secure
-`JWT_SECRET`, an exact HTTPS `CORS_ORIGIN`, and `ANTHROPIC_API_KEY`. Production
-startup rejects demo AI and non-ephemeral file retention.
+Production works without `ANTHROPIC_API_KEY` by using the local neural
+provider (multilingual embeddings + local TrOCR); models download once into
+`EMBEDDING_CACHE_DIR` and then run offline. The deterministic
+`FakeAIProvider` is a test-only double, rejected at production startup.
 
 ## Validation Commands
 

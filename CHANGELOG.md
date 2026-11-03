@@ -6,6 +6,11 @@ Notable changes to ContratoClaro are documented here.
 
 ### Added
 
+- Local neural AI by default with zero external APIs: `LocalAIProvider`
+  (multilingual-e5 embedding prototypes for risk classification, neural-ranked
+  letter composition) and `LocalDocumentProcessor` (on-device TrOCR for scanned
+  images). `ANTHROPIC_API_KEY` is now optional; `FakeAIProvider` remains the
+  deterministic test double with `local-ai-provider` unit tests.
 - Internal gRPC `ClauseAnalysisService` (proto + server + client adapter),
   deterministic scoring, `docs/grpc.md`, and `grpc-clause-analysis` tests.
 - Frontend Web Worker file pre-hash (`postMessage`) and INP observer with

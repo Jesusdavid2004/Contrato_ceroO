@@ -61,7 +61,7 @@ flowchart LR
     end
     subgraph cInfrastructure["Infrastructure"]
         cPostgres["PostgreSQL repositories"]
-        cAI["Anthropic or Fake AI provider"]
+        cAI["Anthropic, local neural, or Fake AI provider"]
         cExtract["PDF extraction and segmentation"]
         cStorage["Local file storage"]
         cPdf["PDFKit generator"]
@@ -153,7 +153,10 @@ readable in GitHub's Mermaid renderer.
   scoring and lifecycle rules; infrastructure contains PostgreSQL, AI,
   extraction, storage, and PDF adapters.
 - Repository and AI interfaces keep application logic independent of concrete
-  PostgreSQL and Anthropic SDKs. `FakeAIProvider` supports deterministic demos.
+  PostgreSQL and AI implementations. `LocalAIProvider` (multilingual embeddings
+  + local TrOCR, zero external APIs) is the offline default; `FakeAIProvider`
+  is the deterministic test double; Anthropic is used only when
+  `ANTHROPIC_API_KEY` is configured.
 - The worker and classification cache are process-local. Run exactly one
   backend replica until work is moved to a durable queue and shared cache.
 - Production startup rejects the deterministic demo provider and non-ephemeral
