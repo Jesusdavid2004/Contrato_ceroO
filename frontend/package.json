@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint",
+    "test": "vitest run",
     "i18n:check": "node scripts/check-i18n.js",
     "type-check": "tsc --noEmit",
     "test:e2e": "playwright test",
@@ -23,10 +24,12 @@
     "react-dom": "^19.2.8",
     "react-i18next": "^17.0.16",
     "react-router-dom": "^7.18.4",
-    "tailwind-merge": "^3.7.0"
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
+    "vitest": "^5.0.4",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^6.1.1",

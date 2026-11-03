@@ -1,25 +1,58 @@
+import { z } from 'zod';
+
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? '';
-const STATUS_POLL_INTERVAL_MS = 500;
-const ANALYSIS_TIMEOUT_MS = 60_000;
+const STATUS_POLL_INTERVALS_MS = [500, 1000, 2000, 4000, 8000];
+const ANALYSIS_TIMEOUT_MS = 10 * 60 * 1000;
 
-export interface ContractClauseResponse {
-  id: string;
-  original_text: string;
+const riskLevelSchema = z.enum(['low', 'medium', 'high']);
+const legalBasisSchema = z.object({
+  reference: z.string(),
+  summary: z.string(),
+});
+const clauseDtoSchema = z.object({
+  id: z.string().min(1),
+  original_text: z.string(),
+  risk_level: riskLevelSchema,
+  plain_explanation: z.string(),
+  confidence: z.number().min(0).max(1),
+  why_risky: z.string().nullable(),
+  legal_basis: z.array(legalBasisSchema),
+  suggested_change: z.string().nullable(),
+});
+const contractDtoSchema = z.object({
+  id: z.string().min(1),
+  status: z.string(),
+  global_risk_score: z.number().min(0).max(100),
+  clauses: z.array(clauseDtoSchema),
+});
+const contractStatusSchema = z.object({
+  status: z.string(),
+  failure_message_key: z.string().nullable(),
+});
+const contractSummarySchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  file_name: z.string(),
+  status: z.string(),
+  global_risk_score: z.number().min(0).max(100),
+  uploaded_at: z.string().refine((s) => !Number.isNaN(Date.parse(s)), { message: 'invalid date' }),
+});
+const objectionLetterSchema = z.object({
+  id: z.string(),
+  contract_id: z.string(),
+  locale: z.string(),
+  content: z.string(),
+  created_at: z.string(),
+});
+const errorKeySchema = z.object({ message_key: z.string() });
+
+export type RiskLevel = z.infer<typeof riskLevelSchema>;
+
+export interface ContractClauseResponse extends z.infer<typeof clauseDtoSchema> {
   text?: string;
-  risk_level: 'low' | 'medium' | 'high';
-  plain_explanation: string;
-  confidence: number;
-  why_risky: string | null;
-  legal_basis: Array<{ reference: string; summary: string }>;
-  suggested_change: string | null;
 }
 
-interface ContractResponse {
-  id: string;
-  status: string;
-  global_risk_score: number;
-  clauses: ContractClauseResponse[];
-}
+type ContractDto = z.infer<typeof contractDtoSchema>;
 
 export interface ContractAnalysisResult {
   id: string;
@@ -28,27 +61,11 @@ export interface ContractAnalysisResult {
   clauses: ContractClauseResponse[];
 }
 
-export interface ContractSummary {
-  id: string;
-  title: string;
-  file_name: string;
-  status: string;
-  global_risk_score: number;
-  uploaded_at: string;
-}
+export type ContractSummary = z.infer<typeof contractSummarySchema>;
 
-export interface ObjectionLetterResponse {
-  id: string;
-  contract_id: string;
-  locale: string;
-  content: string;
-  created_at: string;
-}
+export type ObjectionLetterResponse = z.infer<typeof objectionLetterSchema>;
 
-interface ContractStatusResponse {
-  status: string;
-  failure_message_key: string | null;
-}
+type ContractStatusResponse = z.infer<typeof contractStatusSchema>;
 
 export class ContractApiError extends Error {
   constructor(public readonly messageKey: string) {
@@ -57,12 +74,8 @@ export class ContractApiError extends Error {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-function isRiskLevel(value: unknown): value is ContractClauseResponse['risk_level'] {
-  return value === 'low' || value === 'medium' || value === 'high';
+export function isRiskLevel(value: unknown): value is RiskLevel {
+  return riskLevelSchema.safeParse(value).success;
 }
 
 async function readJson(response: Response): Promise<unknown> {
@@ -73,11 +86,9 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-function getErrorKey(responseBody: unknown): string {
-  if (isRecord(responseBody) && typeof responseBody.message_key === 'string') {
-    return responseBody.message_key;
-  }
-  return 'errors.api_error';
+export function getErrorKey(responseBody: unknown): string {
+  const parsed = errorKeySchema.safeParse(responseBody);
+  return parsed.success ? parsed.data.message_key : 'errors.api_error';
 }
 
 async function requestJson(url: string, token: string, init?: RequestInit): Promise<unknown> {
@@ -94,79 +105,19 @@ async function requestJson(url: string, token: string, init?: RequestInit): Prom
   return body;
 }
 
-function parseStatus(value: unknown): ContractStatusResponse {
-  if (
-    !isRecord(value) ||
-    typeof value.status !== 'string' ||
-    !(typeof value.failure_message_key === 'string' || value.failure_message_key === null)
-  ) {
-    throw new ContractApiError('errors.api_error');
-  }
-  return {
-    status: value.status,
-    failure_message_key: value.failure_message_key,
-  };
+export function parseStatus(value: unknown): ContractStatusResponse {
+  const parsed = contractStatusSchema.safeParse(value);
+  if (!parsed.success) throw new ContractApiError('errors.api_error');
+  return parsed.data;
 }
 
-function parseContract(value: unknown): ContractResponse {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== 'string' ||
-    value.id.length === 0 ||
-    typeof value.status !== 'string' ||
-    typeof value.global_risk_score !== 'number' ||
-    value.global_risk_score < 0 ||
-    value.global_risk_score > 100 ||
-    !Array.isArray(value.clauses)
-  ) {
-    throw new ContractApiError('errors.api_error');
-  }
-  const clauses = value.clauses.map((clause): ContractClauseResponse => {
-    if (
-      !isRecord(clause) ||
-      typeof clause.id !== 'string' ||
-      typeof clause.original_text !== 'string' ||
-      !isRiskLevel(clause.risk_level) ||
-      typeof clause.plain_explanation !== 'string' ||
-      typeof clause.confidence !== 'number' ||
-      clause.confidence < 0 ||
-      clause.confidence > 1 ||
-      !(typeof clause.why_risky === 'string' || clause.why_risky === null) ||
-      !Array.isArray(clause.legal_basis) ||
-      !(typeof clause.suggested_change === 'string' || clause.suggested_change === null)
-    ) {
-      throw new ContractApiError('errors.api_error');
-    }
-    const legalBasis = clause.legal_basis.map((basis) => {
-      if (
-        !isRecord(basis) ||
-        typeof basis.reference !== 'string' ||
-        typeof basis.summary !== 'string'
-      ) {
-        throw new ContractApiError('errors.api_error');
-      }
-      return { reference: basis.reference, summary: basis.summary };
-    });
-    return {
-      id: clause.id,
-      original_text: clause.original_text,
-      risk_level: clause.risk_level,
-      plain_explanation: clause.plain_explanation,
-      confidence: clause.confidence,
-      why_risky: clause.why_risky,
-      legal_basis: legalBasis,
-      suggested_change: clause.suggested_change,
-    };
-  });
-  return {
-    id: value.id,
-    status: value.status,
-    global_risk_score: value.global_risk_score,
-    clauses,
-  };
+export function parseContract(value: unknown): ContractDto {
+  const parsed = contractDtoSchema.safeParse(value);
+  if (!parsed.success) throw new ContractApiError('errors.api_error');
+  return parsed.data;
 }
 
-function toResultsViewModel(contract: ContractResponse) {
+function toResultsViewModel(contract: ContractDto) {
   return {
     id: contract.id,
     status: contract.status,
@@ -178,30 +129,13 @@ function toResultsViewModel(contract: ContractResponse) {
   };
 }
 
-function parseContractSummary(value: unknown): ContractSummary {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== 'string' ||
-    typeof value.title !== 'string' ||
-    typeof value.file_name !== 'string' ||
-    typeof value.status !== 'string' ||
-    typeof value.global_risk_score !== 'number' ||
-    value.global_risk_score < 0 ||
-    value.global_risk_score > 100 ||
-    typeof value.uploaded_at !== 'string' ||
-    Number.isNaN(Date.parse(value.uploaded_at))
-  ) {
-    throw new ContractApiError('errors.api_error');
-  }
-  return {
-    id: value.id,
-    title: value.title,
-    file_name: value.file_name,
-    status: value.status,
-    global_risk_score: value.global_risk_score,
-    uploaded_at: value.uploaded_at,
-  };
+export function parseContractSummary(value: unknown): ContractSummary {
+  const parsed = contractSummarySchema.safeParse(value);
+  if (!parsed.success) throw new ContractApiError('errors.api_error');
+  return parsed.data;
 }
+
+const uploadAcceptedSchema = z.object({ id: z.string().min(1) });
 
 export async function listContracts(token: string): Promise<ContractSummary[]> {
   const response = await requestJson(`${API_URL}/api/contracts`, token);
@@ -228,6 +162,10 @@ export async function deleteContract(contractId: string, token: string): Promise
   );
 }
 
+export async function deleteAccount(token: string): Promise<void> {
+  await requestJson(`${API_URL}/api/v1/auth/me`, token, { method: 'DELETE' });
+}
+
 function wait(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
@@ -236,32 +174,41 @@ export async function uploadAndAnalyzeContract(
   file: File,
   locale: string,
   token: string,
+  onStage?: (stage: string) => void,
 ) {
   const formData = new FormData();
   formData.append('contract', file);
   formData.append('locale', locale);
 
-  const upload = await requestJson(`${API_URL}/api/contracts`, token, {
-    method: 'POST',
-    body: formData,
-  });
-  if (!isRecord(upload) || typeof upload.id !== 'string') {
+  const upload = uploadAcceptedSchema.safeParse(
+    await requestJson(`${API_URL}/api/contracts`, token, {
+      method: 'POST',
+      body: formData,
+    }),
+  );
+  if (!upload.success) {
     throw new ContractApiError('errors.api_error');
   }
+  const contractId = upload.data.id;
 
   const deadline = Date.now() + ANALYSIS_TIMEOUT_MS;
+  let attempt = 0;
+  onStage?.('UPLOADED');
   while (Date.now() < deadline) {
-    await wait(STATUS_POLL_INTERVAL_MS);
+    const delay = STATUS_POLL_INTERVALS_MS[Math.min(attempt, STATUS_POLL_INTERVALS_MS.length - 1)];
+    await wait(delay);
+    attempt += 1;
     const status = parseStatus(await requestJson(
-      `${API_URL}/api/contracts/${encodeURIComponent(upload.id)}/status`,
+      `${API_URL}/api/contracts/${encodeURIComponent(contractId)}/status`,
       token,
     ));
+    onStage?.(status.status);
     if (status.status === 'FAILED') {
       throw new ContractApiError(status.failure_message_key || 'errors.analysis_failed');
     }
     if (status.status === 'READY') {
       const contract = parseContract(await requestJson(
-        `${API_URL}/api/contracts/${encodeURIComponent(upload.id)}`,
+        `${API_URL}/api/contracts/${encodeURIComponent(contractId)}`,
         token,
       ));
       return toResultsViewModel(contract);
@@ -270,24 +217,10 @@ export async function uploadAndAnalyzeContract(
   throw new ContractApiError('errors.analysis_timeout');
 }
 
-function parseObjectionLetter(value: unknown): ObjectionLetterResponse {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== 'string' ||
-    typeof value.contract_id !== 'string' ||
-    typeof value.locale !== 'string' ||
-    typeof value.content !== 'string' ||
-    typeof value.created_at !== 'string'
-  ) {
-    throw new ContractApiError('errors.api_error');
-  }
-  return {
-    id: value.id,
-    contract_id: value.contract_id,
-    locale: value.locale,
-    content: value.content,
-    created_at: value.created_at,
-  };
+export function parseObjectionLetter(value: unknown): ObjectionLetterResponse {
+  const parsed = objectionLetterSchema.safeParse(value);
+  if (!parsed.success) throw new ContractApiError('errors.api_error');
+  return parsed.data;
 }
 
 export async function generateObjectionLetter(
@@ -342,15 +275,6 @@ export async function downloadObjectionLetterPdf(
 }
 
 export function isContractAnalysisResult(value: unknown): value is ContractAnalysisResult {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== 'string' ||
-    typeof value.status !== 'string' ||
-    typeof value.global_risk_score !== 'number' ||
-    !Array.isArray(value.clauses)
-  ) {
-    return false;
-  }
   try {
     parseContract(value);
     return true;
