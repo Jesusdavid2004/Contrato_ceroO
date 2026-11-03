@@ -46,6 +46,7 @@ export interface MockApiState {
   contractWasReadBack: boolean;
   letterWasDownloaded: boolean;
   historyContractWasDeleted: boolean;
+  accountWasDeleted: boolean;
 }
 
 export async function mockContractApi(page: Page, options: MockApiOptions = {}): Promise<MockApiState> {
@@ -56,6 +57,7 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
     contractWasReadBack: false,
     letterWasDownloaded: false,
     historyContractWasDeleted: false,
+    accountWasDeleted: false,
   };
 
   await page.route('**/api/**', async (route) => {
@@ -78,8 +80,16 @@ export async function mockContractApi(page: Page, options: MockApiOptions = {}):
     if (path === '/api/auth/register' && method === 'POST') {
       return json({ user, accessToken: 'e2e-access-token', token: 'e2e-access-token' }, 201);
     }
+    if (path === '/api/auth/refresh' && method === 'POST') {
+      // No persisted session in mocked tests; the app stays logged out.
+      return json({ code: 'UnauthorizedError', message_key: 'errors.unauthorized' }, 401);
+    }
     if (path === '/api/auth/me' && method === 'GET') {
       return json({ user });
+    }
+    if (path === '/api/auth/me' && method === 'DELETE') {
+      state.accountWasDeleted = true;
+      return json({ message: 'Account permanently deleted' });
     }
     if (path === '/api/contracts' && method === 'GET' && options.includeHistory) {
       return json([{

@@ -7,6 +7,12 @@ penetration test or a legal compliance certification.
 
 - Helmet response headers, a configured CORS allowlist, bearer access-token
   authentication, password hashing with bcrypt, and httpOnly refresh cookies.
+  Access tokens live only in frontend memory (never `localStorage`); sessions
+  are restored on startup through the refresh cookie (`POST /api/v1/auth/refresh`
+  with `credentials: include`). Cookie attributes: `Secure` in production,
+  `SameSite=strict` in production (`lax` in dev), `Path=/`, 7-day rotation.
+  CORS uses `credentials: true` against the single exact `CORS_ORIGIN`
+  (HTTPS in production).
 - Authentication, upload, and AI-letter routes have request rate limits.
 - Uploads are checked by binary magic bytes and limited to 10 MiB. Contract and
   letter routes enforce ownership before returning user data.

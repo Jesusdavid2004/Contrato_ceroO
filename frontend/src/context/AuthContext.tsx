@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useState, useEffect, useRef, ReactNode } from 'react';
 export { useAuth } from './useAuth';
 
 export interface User {
@@ -10,10 +10,11 @@ export interface User {
 export interface AuthContextType {
   user: User | null;
   token: string | null;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<string>;
+  register: (name: string, email: string, password: string) => Promise<string>;
   logout: () => void;
   isLoading: boolean;
+  isRestoring: boolean;
   error: string | null;
   clearError: () => void;
 }
@@ -22,26 +23,57 @@ export const AuthContext = createContext<AuthContextType | null>(null);
 
 const API_URL = import.meta.env.VITE_API_URL?.replace(/\/$/, '') ?? '';
 
+interface SessionPayload {
+  user: User;
+  accessToken?: string;
+  token?: string;
+}
+
+function readToken(payload: SessionPayload): string | null {
+  return payload.accessToken || payload.token || null;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
+  // The access token lives only in memory. Sessions survive reloads through
+  // the httpOnly refresh cookie, which JavaScript can never read.
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(() => localStorage.getItem('cc_token'));
+  const tokenRef = useRef<string | null>(null);
+  const [token, setTokenState] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Verify stored token on mount
+  const setToken = (value: string | null) => {
+    tokenRef.current = value;
+    setTokenState(value);
+  };
+
+  // Silent session restore on app start via the refresh cookie.
   useEffect(() => {
-    if (!token) return;
-    fetch(`${API_URL}/api/v1/auth/me`, {
+    let cancelled = false;
+    void fetch(`${API_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
       credentials: 'include',
-      headers: { Authorization: `Bearer ${token}` }
     })
-      .then(r => r.ok ? r.json() : Promise.reject())
-      .then(data => setUser(data.user))
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error('no session'))))
+      .then((data: SessionPayload) => {
+        if (cancelled) return;
+        const tokenValue = readToken(data);
+        if (tokenValue && data.user) {
+          setToken(tokenValue);
+          setUser(data.user);
+        }
+      })
       .catch(() => {
-        localStorage.removeItem('cc_token');
-        setToken(null);
+        // No active session; stay logged out.
+      })
+      .finally(() => {
+        if (!cancelled) setIsRestoring(false);
       });
-  }, [token]);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
@@ -55,10 +87,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Login failed');
-      const tokenValue = data.token || data.accessToken;
-      localStorage.setItem('cc_token', tokenValue);
+      const tokenValue = readToken(data);
+      if (!tokenValue) throw new Error('Login failed');
       setToken(tokenValue);
       setUser(data.user);
+      return tokenValue;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Login failed');
       throw err;
@@ -79,10 +112,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Registration failed');
-      const tokenValue = data.token || data.accessToken;
-      localStorage.setItem('cc_token', tokenValue);
+      const tokenValue = readToken(data);
+      if (!tokenValue) throw new Error('Registration failed');
       setToken(tokenValue);
       setUser(data.user);
+      return tokenValue;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Registration failed');
       throw err;
@@ -96,7 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       method: 'POST',
       credentials: 'include',
     }).catch(() => {});
-    localStorage.removeItem('cc_token');
     setToken(null);
     setUser(null);
   };
@@ -104,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const clearError = () => setError(null);
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading, error, clearError }}>
+    <AuthContext.Provider value={{ user, token, login, register, logout, isLoading, isRestoring, error, clearError }}>
       {children}
     </AuthContext.Provider>
   );

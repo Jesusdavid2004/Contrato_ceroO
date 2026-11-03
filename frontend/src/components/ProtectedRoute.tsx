@@ -4,9 +4,9 @@ import { ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
 
 export function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, isRestoring } = useAuth();
 
-  if (isLoading) {
+  if (isLoading || isRestoring) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
