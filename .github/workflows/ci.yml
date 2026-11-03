@@ -30,6 +30,9 @@ jobs:
       - name: Type check
         run: npm run type-check
 
+      - name: Build
+        run: npm run build
+
       - name: Run unit & characterization tests
         run: npm test
 
@@ -58,6 +61,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
 
       - name: i18n parity check
         run: npm run i18n:check
