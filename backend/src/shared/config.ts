@@ -31,6 +31,8 @@ const envSchema = z.object({
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   DAILY_AI_QUOTA: z.coerce.number().int().positive().default(20),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  GRPC_INTERNAL_TOKEN: z.string().default('dev-internal-token'),
+  GRPC_PORT: z.coerce.number().int().positive().default(50051),
 }).superRefine((environment, context) => {
   if (environment.NODE_ENV !== 'production') return;
 

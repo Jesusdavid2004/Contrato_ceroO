@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package contratoclaro.clause;
+
+option java_package = "com.contratoclaro.clause";
+option java_outer_classname = "ClauseAnalysisProto";
+
+// ─── Service Definition ───────────────────────────────────────────────────────
+
+service ClauseAnalysisService {
+  // Analyze a single clause
+  rpc AnalyzeClause (AnalyzeClauseRequest) returns (AnalyzeClauseResponse);
+
+  // Analyze a batch of clauses in one call
+  rpc BatchAnalyze (BatchAnalyzeRequest) returns (BatchAnalyzeResponse);
+
+  // Lightweight health/liveness probe
+  rpc HealthCheck (HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum RiskLevel {
+  RISK_LEVEL_UNSPECIFIED = 0;
+  RISK_LEVEL_LOW         = 1;
+  RISK_LEVEL_MEDIUM      = 2;
+  RISK_LEVEL_HIGH        = 3;
+}
+
+enum ClauseCategory {
+  CLAUSE_CATEGORY_UNSPECIFIED  = 0;
+  CLAUSE_CATEGORY_TERMINATION  = 1;
+  CLAUSE_CATEGORY_FINANCIAL    = 2;
+  CLAUSE_CATEGORY_OBLIGATIONS  = 3;
+  CLAUSE_CATEGORY_RIGHTS       = 4;
+  CLAUSE_CATEGORY_TEMPORAL     = 5;
+  CLAUSE_CATEGORY_OTHER        = 6;
+}
+
+// ─── AnalyzeClause ───────────────────────────────────────────────────────────
+
+message AnalyzeClauseRequest {
+  // Unique identifier for the contract this clause belongs to
+  string contract_id = 1;
+
+  // Sequential index of the clause within the document (0-based)
+  uint32 clause_index = 2;
+
+  // Raw text of the clause to analyze
+  string text = 3;
+
+  // ISO 3166-1 alpha-2 jurisdiction code (e.g. "CO", "MX")
+  string jurisdiction = 4;
+
+  // BCP-47 locale for the response explanation (e.g. "es", "en")
+  string locale = 5;
+
+  // Optional: context from previous clauses (for cross-clause analysis)
+  repeated string context_clauses = 6;
+}
+
+message AnalyzeClauseResponse {
+  // Mirror of the clause_index from the request
+  uint32 clause_index = 1;
+
+  // Determined risk level
+  RiskLevel risk_level = 2;
+
+  // Risk score in range [0.0, 1.0]
+  float risk_score = 3;
+
+  // Machine-readable category
+  ClauseCategory category = 4;
+
+  // Human-readable explanation in the requested locale
+  string explanation = 5;
+
+  // Legal provisions that this clause may violate
+  repeated string violated_provisions = 6;
+
+  // Suggested replacement or negotiation text
+  string suggested_revision = 7;
+
+  // Processing time in milliseconds (for observability)
+  uint32 processing_ms = 8;
+}
+
+// ─── BatchAnalyze ────────────────────────────────────────────────────────────
+
+message BatchAnalyzeRequest {
+  string contract_id   = 1;
+  string jurisdiction  = 2;
+  string locale        = 3;
+  repeated ClauseItem clauses = 4;
+}
+
+message ClauseItem {
+  uint32 index = 1;
+  string text  = 2;
+}
+
+message BatchAnalyzeResponse {
+  string contract_id                    = 1;
+  repeated AnalyzeClauseResponse results = 2;
+  uint32 total_processing_ms            = 3;
+}
+
+// ─── HealthCheck ─────────────────────────────────────────────────────────────
+
+message HealthCheckRequest {
+  string service = 1; // optional: name of the service to check
+}
+
+message HealthCheckResponse {
+  enum Status {
+    UNKNOWN  = 0;
+    SERVING  = 1;
+    NOT_SERVING = 2;
+  }
+  Status status  = 1;
+  string message = 2;
+}
