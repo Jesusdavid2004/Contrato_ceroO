@@ -5,6 +5,7 @@ import { UploadCloud, FileText, AlertTriangle, CheckCircle, Loader2 } from 'luci
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ContractApiError, uploadAndAnalyzeContract } from '../services/contracts';
+import { preHashFile } from '../lib/fileHash';
 
 export function Home() {
   const { t, i18n } = useTranslation();
@@ -20,6 +21,9 @@ export function Home() {
     setUploadError(null);
     try {
       if (!token) throw new ContractApiError('errors.unauthorized');
+      // Non-blocking pre-hash in a Web Worker: keeps the main thread free (INP)
+      // and never delays the upload; result is only used for client-side dedupe hints.
+      void preHashFile(file);
       const data = await uploadAndAnalyzeContract(file, i18n.language.substring(0, 2), token);
       navigate('/results', { state: { contractData: data } });
     } catch (err: unknown) {
