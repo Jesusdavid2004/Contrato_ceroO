@@ -9,7 +9,7 @@ export function Layout({ children }: { children: ReactNode }) {
   if (!user) {
     return (
       <div
-        className="flex min-h-screen items-center justify-center px-4 py-10"
+        className="flex min-h-svh items-center justify-center px-4 py-10"
         style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
       >
         <div className="w-full max-w-md">{children}</div>
@@ -19,13 +19,13 @@ export function Layout({ children }: { children: ReactNode }) {
 
   return (
     <div
-      className="mx-auto flex min-h-screen w-full max-w-[1200px] gap-5 px-4 py-4 sm:px-6"
+      className="flex min-h-svh w-full"
       style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
     >
       <AppSidebar />
-      <div className="min-w-0 flex-1 pb-24 md:pb-10">
+      <div className="flex min-w-0 flex-1 flex-col">
         <AppHeader />
-        <main className="mx-auto w-full max-w-[880px] px-1 pt-6 sm:px-2">{children}</main>
+        <main className="w-full flex-1 px-4 py-6 sm:px-6 lg:px-10">{children}</main>
       </div>
     </div>
   );

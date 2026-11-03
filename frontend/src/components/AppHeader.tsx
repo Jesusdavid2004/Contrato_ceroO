@@ -24,8 +24,8 @@ export function AppHeader() {
   };
 
   return (
-    <header className="sticky top-0 z-40 -mx-4 border-b border-[var(--color-border)] bg-[var(--color-bg)]/85 px-4 py-3 backdrop-blur-md sm:-mx-6 sm:px-6 md:top-4 md:rounded-[20px] md:border md:bg-[var(--color-card)] md:shadow-[var(--shadow-floating)]">
-      <div className="flex items-center justify-between gap-3">
+    <header className="sticky top-0 z-40 w-full border-b border-[var(--color-border)] bg-[var(--color-surface)]">
+      <div className="flex items-center justify-between gap-3 px-4 py-3.5 sm:px-6 lg:px-10">
         <h1 className="truncate text-[17px] font-bold tracking-tight">{t(titleKey(location.pathname))}</h1>
         <div className="flex items-center gap-1.5">
           <button
@@ -33,7 +33,7 @@ export function AppHeader() {
             type="button"
             onClick={toggleLanguage}
             aria-label="Change language"
-            className="flex items-center gap-1.5 rounded-[12px] px-3 py-2 text-[13px] font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
+            className="flex items-center gap-1.5 rounded-[10px] px-3 py-2 text-[13px] font-semibold text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
           >
             <Globe className="h-4 w-4" />
             <span className="uppercase">{i18n.language.substring(0, 2)}</span>
@@ -43,7 +43,7 @@ export function AppHeader() {
             type="button"
             onClick={toggleTheme}
             aria-label="Toggle theme"
-            className="rounded-[12px] p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
+            className="rounded-[10px] p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]"
           >
             {theme === 'dark' ? <Sun className="h-[18px] w-[18px]" /> : <Moon className="h-[18px] w-[18px]" />}
           </button>

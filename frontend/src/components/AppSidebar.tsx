@@ -26,16 +26,16 @@ export function AppSidebar() {
 
   return (
     <>
-      {/* Desktop floating sidebar */}
-      <aside className="sticky top-4 hidden h-[calc(100vh-2rem)] w-[248px] shrink-0 flex-col rounded-[24px] border border-[var(--color-border)] bg-[var(--color-floating)] p-4 shadow-[var(--shadow-floating)] md:flex">
-        <Link to="/" className="flex items-center gap-2.5 rounded-2xl px-2 py-2">
-          <span className="flex h-9 w-9 items-center justify-center rounded-[13px] bg-[var(--color-action-soft)]">
-            <ShieldCheck className="h-5 w-5 text-[var(--color-action)]" />
+      {/* Desktop sidebar: full height, flush, macOS style */}
+      <aside className="sticky top-0 hidden h-svh w-[260px] shrink-0 flex-col border-r border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-6 md:flex">
+        <Link to="/" className="flex items-center gap-2.5 rounded-xl px-2 py-1">
+          <span className="flex h-9 w-9 items-center justify-center rounded-[11px] bg-[var(--color-action)]">
+            <ShieldCheck className="h-5 w-5 text-white" />
           </span>
           <span className="text-[16px] font-bold tracking-tight">ContratoClaro</span>
         </Link>
 
-        <nav aria-label="Primary" className="mt-6 flex flex-col gap-1">
+        <nav aria-label="Primary" className="mt-8 flex flex-col gap-1">
           {LINKS.map(({ path, labelKey, icon: Icon, end }) => {
             const active = isActive(location.pathname, { path, end } as (typeof LINKS)[number]);
             return (
@@ -43,13 +43,15 @@ export function AppSidebar() {
                 key={path}
                 to={path}
                 aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-3 rounded-[14px] px-3.5 py-2.5 text-[14px] font-semibold transition-colors ${
+                className={`flex items-center gap-3 rounded-[12px] px-3.5 py-2.5 text-[14px] font-semibold transition-colors ${
                   active
-                    ? 'bg-[var(--color-action-soft)] text-[var(--color-action)]'
+                    ? 'bg-[var(--color-surface-2)] text-[var(--color-text)]'
                     : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-2)] hover:text-[var(--color-text)]'
                 }`}
               >
-                <Icon className="h-[18px] w-[18px]" />
+                <Icon
+                  className={`h-[18px] w-[18px] ${active ? 'text-[var(--color-action)]' : ''}`}
+                />
                 {t(labelKey, labelKey)}
               </Link>
             );
@@ -58,7 +60,7 @@ export function AppSidebar() {
 
         <div className="mt-auto">
           {user && (
-            <div className="flex items-center gap-3 rounded-[16px] bg-[var(--color-surface-2)] p-3">
+            <div className="flex items-center gap-3 rounded-[14px] border border-[var(--color-border)] bg-[var(--color-surface-tertiary)] p-3">
               <span
                 aria-hidden="true"
                 className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--color-action)] text-[13px] font-bold text-white"
@@ -84,7 +86,7 @@ export function AppSidebar() {
       {/* Mobile bottom tab bar */}
       <nav
         aria-label="Primary"
-        className="fixed inset-x-3 bottom-3 z-50 flex items-center justify-around rounded-[22px] border border-[var(--color-border)] bg-[var(--color-floating)] px-2 py-2 shadow-[var(--shadow-popover)] md:hidden"
+        className="fixed inset-x-3 bottom-3 z-50 flex items-center justify-around rounded-[22px] border border-[var(--color-border)] bg-[var(--color-surface)] px-2 py-2 shadow-[var(--shadow-popover)] md:hidden"
       >
         {LINKS.map(({ path, labelKey, icon: Icon, end }) => {
           const active = isActive(location.pathname, { path, end } as (typeof LINKS)[number]);
