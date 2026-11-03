@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { ContractRepository } from '../../domain/repositories/ContractRepository';
 import { Contract } from '../../domain/entities/Contract';
 import { Clause } from '../../domain/entities/Clause';
@@ -267,7 +268,16 @@ export class InMemoryContractRepository implements ContractRepository {
   }
 
   public async saveObjectionLetter(letter: ObjectionLetter): Promise<void> {
-    this.letters.set(letter.contractId, letter);
+    const stored = letter.id
+      ? letter
+      : new ObjectionLetter({
+        id: `letter-${randomUUID()}`,
+        contractId: letter.contractId,
+        locale: letter.locale,
+        content: letter.content,
+        createdAt: letter.createdAt,
+      });
+    this.letters.set(stored.contractId, stored);
   }
 
   public async getObjectionLetter(contractId: string): Promise<ObjectionLetter | null> {

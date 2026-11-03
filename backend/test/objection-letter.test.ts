@@ -281,3 +281,33 @@ describe('Objection letter PDF', () => {
     expect(generateObjectionLetter).toHaveBeenCalledOnce();
   });
 });
+
+describe('Objection letter ids (API contract)', () => {
+  it('returns the persisted letter id on generate so clients can parse it', async () => {
+    const repository = new InMemoryContractRepository();
+    await repository.save(createContract());
+    const { provider } = createProvider('Generated letter');
+    const letter = await new GenerateObjectionLetterUseCase(repository, provider).execute({
+      contractId: CONTRACT_ID,
+      userId: OWNER_ID,
+    });
+    expect(typeof letter.id).toBe('string');
+    expect(letter.id!.length).toBeGreaterThan(0);
+  });
+
+  it('returns the persisted letter id on update so clients can parse it', async () => {
+    const repository = new InMemoryContractRepository();
+    await repository.save(createContract());
+    const { provider } = createProvider('Generated letter');
+    await new GenerateObjectionLetterUseCase(repository, provider).execute({
+      contractId: CONTRACT_ID,
+      userId: OWNER_ID,
+    });
+    const updated = await new UpdateObjectionLetterUseCase(repository).execute({
+      contractId: CONTRACT_ID,
+      userId: OWNER_ID,
+      content: 'Carta revisada.',
+    });
+    expect(typeof updated.id).toBe('string');
+  });
+});

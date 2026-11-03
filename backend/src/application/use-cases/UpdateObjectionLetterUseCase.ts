@@ -37,6 +37,10 @@ export class UpdateObjectionLetterUseCase {
       createdAt: this.clock(),
     });
     await this.contractRepository.saveObjectionLetter(updatedLetter);
-    return updatedLetter;
+    // Re-read so the response carries the persisted id (SERIAL in Postgres,
+    // generated in memory), which the API contract requires.
+    const saved = await this.contractRepository.getObjectionLetter(contract.id);
+    if (!saved) throw new ObjectionLetterNotFoundError(contract.id);
+    return saved;
   }
 }

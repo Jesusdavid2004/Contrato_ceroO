@@ -5,6 +5,7 @@ import {
   ContractNotFoundError,
   ContractNotReadyError,
   ContractOwnershipError,
+  ObjectionLetterNotFoundError,
 } from '../../domain/exceptions/index';
 import { NoFlaggedClausesError } from '../../domain/exceptions/index';
 
@@ -45,6 +46,10 @@ export class GenerateObjectionLetterUseCase {
       createdAt: this.clock(),
     });
     await this.contractRepository.saveObjectionLetter(letter);
-    return letter;
+    // Re-read so the response carries the persisted id (SERIAL in Postgres,
+    // generated in memory), which the API contract requires.
+    const saved = await this.contractRepository.getObjectionLetter(contract.id);
+    if (!saved) throw new ObjectionLetterNotFoundError(contract.id);
+    return saved;
   }
 }
