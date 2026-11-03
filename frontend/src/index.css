@@ -7,6 +7,11 @@
   --color-card-border: var(--color-card-border);
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
+  --color-surface: var(--color-surface);
+  --color-surface-2: var(--color-surface-2);
+  --color-floating: var(--color-floating);
+  --color-text-muted: var(--color-text-muted);
+  --color-border: var(--color-border);
   --color-risk-high-bg: var(--color-risk-high-bg);
   --color-risk-high-text: var(--color-risk-high-text);
   --color-risk-medium-bg: var(--color-risk-medium-bg);
@@ -17,55 +22,121 @@
 
 @layer base {
   :root {
-    --color-bg: #f8fafc;
-    --color-text: #0f172a;
-    --color-card: rgba(255, 255, 255, 0.7);
-    --color-card-border: rgba(255, 255, 255, 0.5);
-    --color-primary: #3b82f6;
-    --color-primary-hover: #2563eb;
+    --color-bg: #f4f5f7;
+    --color-text: #17191d;
+    --color-card: rgba(255, 255, 255, 0.82);
+    --color-card-border: rgba(23, 25, 29, 0.06);
+    --color-primary: #246bfd;
+    --color-primary-hover: #1b5be0;
 
-    --color-risk-high-bg: #fee2e2;
-    --color-risk-high-text: #991b1b;
-    --color-risk-medium-bg: #fef3c7;
-    --color-risk-medium-text: #92400e;
-    --color-risk-low-bg: #d1fae5;
-    --color-risk-low-text: #065f46;
+    --color-surface: #ffffff;
+    --color-surface-2: #eceef1;
+    --color-floating: #ffffff;
+    --color-text-muted: #737780;
+    --color-border: #e2e4e8;
+    --color-contrast: #111318;
+    --color-action: #246bfd;
+    --color-action-hover: #1b5be0;
+    --color-action-soft: #eaf1ff;
+
+    --color-risk-high-bg: #fdeeee;
+    --color-risk-high-text: #b3261e;
+    --color-risk-high-dot: #d92d20;
+    --color-risk-medium-bg: #fdf5e6;
+    --color-risk-medium-text: #8a5a00;
+    --color-risk-medium-dot: #dc6803;
+    --color-risk-low-bg: #e9f7ef;
+    --color-risk-low-text: #067647;
+    --color-risk-low-dot: #039855;
+
+    --shadow-floating: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px -8px rgba(16, 24, 40, 0.1);
+    --shadow-popover: 0 2px 4px rgba(16, 24, 40, 0.05), 0 16px 40px -12px rgba(16, 24, 40, 0.18);
+    --radius-panel: 26px;
+    --radius-card: 20px;
   }
 
   :root[data-theme="dark"] {
-    --color-bg: #0b1120;
-    --color-text: #f8fafc;
-    --color-card: rgba(30, 41, 59, 0.5);
-    --color-card-border: rgba(255, 255, 255, 0.1);
-    --color-primary: #60a5fa;
-    --color-primary-hover: #3b82f6;
+    --color-bg: #090d16;
+    --color-text: #f4f6fa;
+    --color-card: rgba(27, 38, 56, 0.72);
+    --color-card-border: rgba(244, 246, 250, 0.07);
+    --color-primary: #3478f6;
+    --color-primary-hover: #4f8df8;
 
-    --color-risk-high-bg: rgba(153, 27, 27, 0.3);
-    --color-risk-high-text: #fca5a5;
-    --color-risk-medium-bg: rgba(146, 64, 14, 0.3);
-    --color-risk-medium-text: #fcd34d;
-    --color-risk-low-bg: rgba(6, 95, 70, 0.3);
-    --color-risk-low-text: #6ee7b7;
+    --color-surface: #111827;
+    --color-surface-2: #172235;
+    --color-floating: #1b2638;
+    --color-text-muted: #9aa5b5;
+    --color-border: #29364a;
+    --color-contrast: #f4f6fa;
+    --color-action: #3478f6;
+    --color-action-hover: #4f8df8;
+    --color-action-soft: #172d50;
+
+    --color-risk-high-bg: rgba(217, 45, 32, 0.12);
+    --color-risk-high-text: #f97066;
+    --color-risk-high-dot: #f97066;
+    --color-risk-medium-bg: rgba(220, 104, 3, 0.13);
+    --color-risk-medium-text: #fdb022;
+    --color-risk-medium-dot: #fdb022;
+    --color-risk-low-bg: rgba(3, 152, 85, 0.13);
+    --color-risk-low-text: #6ce9a6;
+    --color-risk-low-dot: #6ce9a6;
+
+    --shadow-floating: 0 1px 2px rgba(0, 0, 0, 0.4), 0 12px 32px -12px rgba(0, 0, 0, 0.55);
+    --shadow-popover: 0 2px 6px rgba(0, 0, 0, 0.45), 0 24px 56px -16px rgba(0, 0, 0, 0.65);
+  }
+
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
 }
 
 body {
   background-color: var(--color-bg);
   color: var(--color-text);
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  transition: background-color 0.4s ease, color 0.4s ease;
+  font-family: 'Inter', -apple-system, 'SF Pro Text', system-ui, sans-serif;
+  transition: background-color 0.25s ease, color 0.25s ease;
   min-height: 100vh;
 }
 
-/* Glassmorphism utilities */
-.glass {
-  background: var(--color-card);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--color-card-border);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+/* Floating surfaces */
+.floating-panel {
+  background: var(--color-floating);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-floating);
 }
 
-.dark .glass {
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+.floating-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-floating);
+}
+
+/* Subtle glass (sidebar / header only) */
+.glass {
+  background: var(--color-card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--color-card-border);
+  box-shadow: var(--shadow-floating);
+}
+
+/* Focus visibility */
+:where(a, button, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-action);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
