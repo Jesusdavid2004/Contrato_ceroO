@@ -80,6 +80,7 @@ export function Settings() {
     <div className="space-y-5">
       <SectionHeader title={t('settings.title', 'Settings')} subtitle={t('settings.subtitle', 'Manage your preferences')} />
 
+      <div className="grid items-start gap-5 lg:grid-cols-2">
       <motion.section
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -131,6 +132,7 @@ export function Settings() {
           control={<Switch id="settings-notifications-toggle" label={t('settings.analysis_alerts', 'Analysis alerts')} on onToggle={() => {}} />}
         />
       </motion.section>
+      </div>
 
       <motion.section
         initial={{ opacity: 0, y: 12 }}

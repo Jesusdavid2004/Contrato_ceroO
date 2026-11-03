@@ -209,7 +209,7 @@ export function Results() {
         {t('results.disclaimer')}
       </p>
 
-      <section aria-label={t('results.clauses')} className="space-y-3">
+      <section aria-label={t('results.clauses')} className="grid items-start gap-4 xl:grid-cols-2">
         {data.clauses.map((clause, i) => (
           <ClauseCard key={clause.id} clause={clause} defaultOpen={i === 0} />
         ))}
