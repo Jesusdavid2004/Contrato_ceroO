@@ -71,8 +71,13 @@ export function Settings() {
       // Password re-entry re-authenticates before destroying everything.
       const freshToken = await login(user.email, password);
       await deleteAccount(freshToken);
-      logout();
+      // React Router commits navigations in a transition while auth updates
+      // are urgent: clearing the session in the same tick would render
+      // ProtectedRoute at the stale location and bounce to /login. Wait for
+      // /register to paint first, then clear the session.
       navigate('/register', { replace: true });
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+      logout();
     } catch {
       setDeleteError(t('settings.delete_failed'));
     } finally {
