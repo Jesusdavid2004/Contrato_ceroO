@@ -85,6 +85,48 @@ Limits: the free backend sleeps after inactivity (the first request can take
 about 30 seconds), has 512 MB RAM (so keep `RAG_ENABLED=false`), and the
 in-process worker requires a single instance. Migrations run on each start.
 
+### Railway: backend + frontend + Postgres (recommended demo path)
+
+Railway builds both Dockerfiles straight from this repo — no config file
+needed. Create one project with three services (all from the same GitHub
+repo), then wire them with private networking:
+
+1. **Database:** Add > PostgreSQL plugin. Copy its `DATABASE_URL`
+   (use the *private* one for the backend). The migrations run
+   `CREATE EXTENSION vector`: if the managed Postgres rejects it, point
+   `DATABASE_URL` at a Neon project instead (same requirement as above).
+2. **Backend:** New > GitHub Repo > this repo, root directory `/backend`
+   (Dockerfile detected automatically). Set variables:
+   - `DATABASE_URL` = the Postgres private URL.
+   - `JWT_SECRET` = Generate (Railway random value).
+   - `CORS_ORIGIN` = the exact HTTPS URL from step 4 (update after first deploy).
+   - `AI_PROVIDER` = `local` (downloads models on first analysis), or leave
+     empty for the hybrid local + Gemini mode with `GEMINI_API_KEY` set.
+   - Keep `NODE_ENV=production`, `RAG_ENABLED=false`,
+     `CONTRACT_FILE_RETENTION=none`. Do not set `SEED_DEMO`.
+   - Health check path: `/ready`.
+3. **Model cache (recommended):** add a Railway volume mounted at
+   `/app/storage/models` on the backend service, so downloaded AI models
+   survive redeploys (otherwise each deploy re-downloads ~500 MB on the
+   first analysis).
+4. **Frontend:** New > GitHub Repo > this repo, root directory `/frontend`
+   (Dockerfile detected automatically). Set variables:
+   - `BACKEND_HOST` = `${{backend.RAILWAY_PRIVATE_DOMAIN}}` (replace
+     `backend` with your backend service name if different).
+   - `BACKEND_PORT` = `${{backend.PORT}}`.
+   - No `VITE_API_URL` is needed: the Nginx frontend proxies same-origin
+     `/api/*` to the backend, so no CORS preflights occur.
+   - Health check path: `/`. Generate a public domain for this service.
+5. Set backend `CORS_ORIGIN` to the frontend public domain and redeploy.
+6. Verify `GET /ready` on the backend (`{"status":"ready"}`) and register a
+   user in the frontend. The demo account is created through the UI in
+   production (the seed script refuses to run outside development).
+
+Constraints: keep exactly **1 replica** per service (in-process queue and
+AI cache are not shared); the first analysis after a cold start downloads
+models — expect minutes, then seconds. Trial credits cover a class demo;
+watch usage before the free allowance runs out.
+
 ### Release Procedure
 
 1. Build and scan the backend and frontend images in CI. Use immutable image
