@@ -9,7 +9,7 @@
     "dev": "npm run build && npm run migrate:up && node dist/src/server.js",
     "type-check": "tsc --noEmit",
     "test": "vitest run",
-    "evaluate": "npm run build && node dist/scripts/evaluate-high-risk.js",
+    "evaluate": "npm run build && node dist/scripts/evaluate-providers.js",
     "migrate:up": "node scripts/migrate.cjs up",
     "migrate:down": "node scripts/migrate.cjs down",
     "seed:legal": "npm run build && node dist/scripts/seed-legal-provisions.js",

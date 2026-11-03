@@ -1,0 +1,103 @@
+{
+  "contracts": [
+    {
+      "id": "eval-lease-01",
+      "contractType": "LEASE",
+      "jurisdiction": "CO",
+      "locale": "es",
+      "clauses": [
+        { "id": "c1", "text": "El contrato se renovará automáticamente cada año salvo aviso escrito con tres meses de antelación.", "expectedHighRisk": true },
+        { "id": "c2", "text": "El arrendatario notificará por escrito cualquier cambio en sus datos de contacto.", "expectedHighRisk": false },
+        { "id": "c3", "text": "El canon se reajustará cada año según el IPC certificado, sin excederlo.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-lease-02",
+      "contractType": "LEASE",
+      "jurisdiction": "CO",
+      "locale": "es",
+      "clauses": [
+        { "id": "c1", "text": "Si el pago se retrasa un solo día, el arrendador podrá quedarse con la totalidad del depósito como compensación.", "expectedHighRisk": true },
+        { "id": "c2", "text": "El arrendador podrá modificar el canon a su discreción cuando lo considere necesario.", "expectedHighRisk": true },
+        { "id": "c3", "text": "Ambas partes acuerdan un plazo de doce meses prorrogable por mutuo acuerdo.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-service-01",
+      "contractType": "SERVICE",
+      "jurisdiction": "CO",
+      "locale": "es",
+      "clauses": [
+        { "id": "c1", "text": "El cliente renuncia a cualquier reclamación por fallas del servicio.", "expectedHighRisk": true },
+        { "id": "c2", "text": "El proveedor responderá por los daños comprobados hasta el valor del contrato.", "expectedHighRisk": false },
+        { "id": "c3", "text": "Se cobrará un cargo administrativo del 2% sobre saldos vencidos.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-employment-01",
+      "contractType": "EMPLOYMENT",
+      "jurisdiction": "CO",
+      "locale": "es",
+      "clauses": [
+        { "id": "c1", "text": "El empleador podrá terminar el contrato sin previo aviso y sin indemnización.", "expectedHighRisk": true },
+        { "id": "c2", "text": "El trabajador tendrá derecho a quince días hábiles de vacaciones pagadas por año.", "expectedHighRisk": false },
+        { "id": "c3", "text": "Las horas extra se pagarán con un recargo del 25% sobre la hora ordinaria.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-lease-03",
+      "contractType": "LEASE",
+      "jurisdiction": "CO",
+      "locale": "es",
+      "clauses": [
+        { "id": "c1", "text": "En caso de incumplimiento grave se aplicará una penalidad proporcional al daño causado, con tope del 5% del canon mensual.", "expectedHighRisk": false },
+        { "id": "c2", "text": "El arrendador podrá visitar el inmueble previa cita acordada con 48 horas de anticipación.", "expectedHighRisk": false },
+        { "id": "c3", "text": "Queda prohibido subarrendar sin autorización escrita del arrendador.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-service-02",
+      "contractType": "SERVICE",
+      "jurisdiction": "CO",
+      "locale": "en",
+      "clauses": [
+        { "id": "c1", "text": "This agreement renews automatically every year unless notice is given.", "expectedHighRisk": true },
+        { "id": "c2", "text": "Notices will be sent to the contact details provided by each party.", "expectedHighRisk": false },
+        { "id": "c3", "text": "The provider will fix reported defects within ten business days.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-lease-04",
+      "contractType": "LEASE",
+      "jurisdiction": "CO",
+      "locale": "en",
+      "clauses": [
+        { "id": "c1", "text": "The landlord may terminate the lease at any time without notice and keep the full deposit.", "expectedHighRisk": true },
+        { "id": "c2", "text": "Rent increases are limited to the official inflation rate once per year.", "expectedHighRisk": false },
+        { "id": "c3", "text": "The tenant must allow visits with 48 hours prior written notice.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-service-03",
+      "contractType": "SERVICE",
+      "jurisdiction": "CO",
+      "locale": "en",
+      "clauses": [
+        { "id": "c1", "text": "The client waives any right to a refund once the service has started.", "expectedHighRisk": true },
+        { "id": "c2", "text": "Support is available on business days from 8am to 6pm.", "expectedHighRisk": false },
+        { "id": "c3", "text": "A late fee of 1.5% per month applies to overdue invoices.", "expectedHighRisk": false }
+      ]
+    },
+    {
+      "id": "eval-employment-02",
+      "contractType": "EMPLOYMENT",
+      "jurisdiction": "CO",
+      "locale": "en",
+      "clauses": [
+        { "id": "c1", "text": "Employment is at-will and either party may end it with two weeks written notice.", "expectedHighRisk": false },
+        { "id": "c2", "text": "The employee agrees not to compete for six months after leaving, within the same city.", "expectedHighRisk": false },
+        { "id": "c3", "text": "Overtime is paid at 1.5x the regular hourly rate.", "expectedHighRisk": false }
+      ]
+    }
+  ]
+}

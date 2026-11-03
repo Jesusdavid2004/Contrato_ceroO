@@ -1,21 +1,17 @@
 # High-risk classification evaluation
 
-**Generated:** 2026-11-03T00:36:30.856Z
-**Evaluation mode:** deterministic offline FakeAIProvider; no external AI service or personal contract data is used.
-**Dataset:** 5 synthetic, de-identified contract scenarios; binary expected labels are for HIGH risk only.
+**Generated:** 2026-11-03T13:35:35.064Z
+**Dataset:** 9 hand-labeled contract scenarios (Spanish and English, lease/service/employment); binary expected labels are for HIGH risk only.
+**RAG:** disabled for this run, so `legal_basis` is empty across providers.
 
-| Measure | Result |
-|---|---:|
-| Clauses evaluated | 10 |
-| True positives | 4 |
-| False positives | 0 |
-| False negatives | 0 |
-| True negatives | 6 |
-| HIGH-risk precision | 100.0% |
-| HIGH-risk recall | 100.0% |
+| Provider | Clauses | TP | FP | FN | TN | HIGH precision | HIGH recall | Usage |
+|---|---|---:|---:|---:|---:|---:|---:|---|
+| fake (deterministic regex double) | 27 | 1 | 0 | 7 | 19 | 100.0% | 12.5% | inputTokens=0 outputTokens=0 |
+| local (on-device multilingual-e5 prototypes) | 27 | 5 | 5 | 3 | 14 | 50.0% | 62.5% | inputTokens=519 outputTokens=0 |
+| anthropic (hosted Claude, tool use + Zod) | skipped | ANTHROPIC_API_KEY is not set; no external call was made. |
 
 ## Interpretation and limitations
 
-This report is a reproducible smoke evaluation of the offline demonstration classifier against a small synthetic fixture set. It is not a measurement of Anthropic model quality, legal correctness, or production performance. Synthetic expected labels are illustrative and must be reviewed by qualified legal-domain reviewers before use as a benchmark. Legal references are intentionally excluded from these samples.
+Labels are illustrative judgments for a classroom demo, not legal review: an abusive paraphrase without the regex keywords counts as HIGH, and a proportionate capped penalty counts as LOW. The deterministic fake double is a Spanish-keyword baseline, so English traps and paraphrases are its known blind spots. The local neural provider uses a general-purpose multilingual embedding model, not a legal-tuned classifier. The hosted provider is only measured when a key is configured, and its numbers still depend on prompts, temperature defaults, and this tiny fixture set — never treat them as production quality or legal correctness.
 
-Run `npm run evaluate` from `backend/` to regenerate this report. Expand the reviewed fixture set before using these metrics to make product or legal decisions.
+Run `npm run evaluate` from `backend/` to regenerate this report. Expand the reviewed fixture set with qualified legal-domain reviewers before using these metrics to make product or legal decisions.
