@@ -1,0 +1,114 @@
+[
+  {
+    "id": "co-820-art20-reajuste",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 820 de 2003 (arrendamiento de vivienda urbana)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html",
+    "reference": "Ley 820 de 2003, Art. 20",
+    "text": "El canon de arrendamiento de vivienda urbana se reajusta cada doce meses como máximo en la proporción del IPC causada en el año anterior; todo incremento superior a ese límite se considera no escrito."
+  },
+  {
+    "id": "co-820-art22-servicios",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 820 de 2003 (arrendamiento de vivienda urbana)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html",
+    "reference": "Ley 820 de 2003, Art. 22",
+    "text": "El pago de los servicios públicos domiciliarios corresponde a quien efectivamente los consuma; el arrendador no puede trasladar al arrendatario deudas anteriores a la entrega del inmueble."
+  },
+  {
+    "id": "co-820-art24-preaviso",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 820 de 2003 (arrendamiento de vivienda urbana)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html",
+    "reference": "Ley 820 de 2003, Art. 24",
+    "text": "La terminación unilateral del contrato de vivienda urbana exige preaviso escrito con la antelación legal y el pago de la indemnización prevista; la terminación sin aviso ni indemnización contradice la ley."
+  },
+  {
+    "id": "co-820-art28-deposito",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 820 de 2003 (arrendamiento de vivienda urbana)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html",
+    "reference": "Ley 820 de 2003, Art. 28",
+    "text": "Los depósitos o garantías pactados deben ser razonables y restituirse al finalizar el contrato si no existen daños ni obligaciones pendientes a cargo del arrendatario."
+  },
+  {
+    "id": "co-820-art29-prorroga",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 820 de 2003 (arrendamiento de vivienda urbana)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html",
+    "reference": "Ley 820 de 2003, Art. 29",
+    "text": "Vencido el término inicial, el contrato de vivienda urbana se prorroga en las mismas condiciones salvo aviso escrito en contrario dentro de los plazos legales."
+  },
+  {
+    "id": "co-820-art18-obligaciones",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 820 de 2003 (arrendamiento de vivienda urbana)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html",
+    "reference": "Ley 820 de 2003, Art. 18",
+    "text": "Son obligaciones del arrendador entregar el inmueble en buen estado y realizar las reparaciones necesarias no imputables al arrendatario; no puede trasladarle cargas de mantenimiento estructural."
+  },
+  {
+    "id": "co-820-art21-mora",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 820 de 2003 (arrendamiento de vivienda urbana)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html",
+    "reference": "Ley 820 de 2003, Art. 21",
+    "text": "La mora en el pago del canon faculta al arrendador a exigir los cánones debidos y a terminar el contrato por la vía legal, sin que pueda imponer penalidades desproporcionadas adicionales."
+  },
+  {
+    "id": "co-1480-art37-abusivas",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 37",
+    "text": "Se consideran abusivas las cláusulas que limiten los derechos del consumidor, trasladen responsabilidades al consumidor o permitan al productor modificar unilateralmente el contrato en su favor."
+  },
+  {
+    "id": "co-1480-art42-ineficacia",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 42",
+    "text": "Las cláusulas abusivas en contratos con consumidores son ineficaces de pleno derecho y se tienen por no escritas, sin afectar la validez del resto del contrato."
+  },
+  {
+    "id": "co-1480-art43-lista",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 43",
+    "text": "Es abusiva la cláusula que exima de responsabilidad al productor, le permita no reembolsar lo pagado o imponga al consumidor renuncias anticipadas a sus derechos legales."
+  },
+  {
+    "id": "co-1480-art23-informacion",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 23",
+    "text": "El consumidor tiene derecho a recibir información clara, veraz y suficiente sobre precios, cargos adicionales y condiciones del contrato antes de obligarse."
+  },
+  {
+    "id": "co-1480-art47-retracto",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 47",
+    "text": "En ventas con financiación o a distancia el consumidor puede ejercer el derecho de retracto dentro del término legal y recibir la devolución de lo pagado."
+  },
+  {
+    "id": "co-1480-art11-garantia",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 11",
+    "text": "Todo bien o servicio tiene una garantía legal mínima a cargo del productor o proveedor, que no puede ser desconocida mediante cláusulas contractuales."
+  },
+  {
+    "id": "co-1480-art3-derechos",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 3",
+    "text": "Son derechos de los consumidores la protección contra cláusulas abusivas, la libertad contractual sin coacción y la reclamación directa ante el productor o proveedor."
+  }
+]
