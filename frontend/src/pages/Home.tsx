@@ -19,23 +19,31 @@ export function Home() {
   const { token, user } = useAuth();
   const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadStage, setUploadStage] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const uploadFile = async (file: File) => {
     setIsUploading(true);
+    setUploadStage(null);
     setUploadError(null);
     try {
       if (!token) throw new ContractApiError('errors.unauthorized');
       // Non-blocking pre-hash in a Web Worker: keeps the main thread free (INP)
       // and never delays the upload; result is only used for client-side dedupe hints.
       void preHashFile(file);
-      const data = await uploadAndAnalyzeContract(file, i18n.language.substring(0, 2), token);
+      const data = await uploadAndAnalyzeContract(
+        file,
+        i18n.language.substring(0, 2),
+        token,
+        (stage) => setUploadStage(stage),
+      );
       navigate('/results', { state: { contractData: data } });
     } catch (err: unknown) {
       const messageKey = err instanceof ContractApiError ? err.messageKey : 'errors.api_error';
       setUploadError(t(messageKey, { defaultValue: t('errors.analysis_failed') }));
     } finally {
       setIsUploading(false);
+      setUploadStage(null);
     }
   };
 
@@ -63,7 +71,7 @@ export function Home() {
         transition={{ duration: 0.3, delay: 0.08 }}
         className="floating-panel p-4! sm:p-5!"
       >
-        <FileDropzone isUploading={isUploading} onFile={(f) => void uploadFile(f)} />
+        <FileDropzone isUploading={isUploading} stage={uploadStage} onFile={(f) => void uploadFile(f)} />
         {uploadError && (
           <p role="alert" className="px-2 pb-1 pt-3 text-[13px] font-medium text-red-500">
             {uploadError}

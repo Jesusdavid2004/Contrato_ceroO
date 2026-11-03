@@ -6,9 +6,11 @@ const ACCEPT = '.pdf,image/png,image/jpeg,image/webp,image/tiff,image/bmp,image/
 
 export function FileDropzone({
   isUploading,
+  stage,
   onFile,
 }: {
   isUploading: boolean;
+  stage?: string | null;
   onFile: (file: File) => void;
 }) {
   const { t } = useTranslation();
@@ -65,7 +67,9 @@ export function FileDropzone({
         {isUploading ? t('contract.analyzing', 'Analyzing contract...') : t('contract.upload_cta')}
       </span>
       <span className="text-[13px] text-[var(--color-text-muted)]">
-        {t('contract.upload_hint', 'PDF or Images (max 10MB)')}
+        {isUploading && stage
+          ? t(`history.status.${stage}`, { defaultValue: t('contract.analyzing', 'Analyzing contract...') })
+          : t('contract.upload_hint', 'PDF or Images (max 10MB)')}
       </span>
     </div>
   );
