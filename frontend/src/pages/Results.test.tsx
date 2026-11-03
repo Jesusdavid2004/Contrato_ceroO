@@ -7,6 +7,7 @@ import i18n from '../i18n';
 import {
   generateObjectionLetter,
   type ContractAnalysisResult,
+  type ContractClauseResponse,
 } from '../services/contracts';
 
 vi.mock('../services/contracts', async (importOriginal) => {
@@ -39,7 +40,7 @@ const SAFE_CLAUSE = {
   suggested_change: null,
 };
 
-function analysis(clauses: typeof RISKY_CLAUSE[]): ContractAnalysisResult {
+function analysis(clauses: ContractClauseResponse[]): ContractAnalysisResult {
   return { id: 'c1', status: 'READY', global_risk_score: 50, clauses };
 }
 
