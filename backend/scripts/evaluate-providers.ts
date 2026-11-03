@@ -1,9 +1,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import Anthropic from '@anthropic-ai/sdk';
 import { FakeAIProvider } from '../src/infrastructure/ai/FakeAIProvider';
 import { LocalAIProvider } from '../src/infrastructure/ai/LocalAIProvider';
-import { AnthropicAIProvider } from '../src/infrastructure/ai/AnthropicAIProvider';
 import { GeminiAIProvider } from '../src/infrastructure/ai/GeminiAIProvider';
 import { HuggingFaceLocalEmbeddingProvider } from '../src/infrastructure/ai/HuggingFaceLocalEmbeddingProvider';
 import type { AIProvider } from '../src/domain/services/AIProvider';
@@ -126,26 +124,6 @@ async function main(): Promise<void> {
       name: 'local (on-device multilingual-e5 prototypes)',
       status: 'skipped',
       detail: `model unavailable offline: ${error instanceof Error ? error.message : String(error)}`,
-    });
-  }
-
-  if (config.ANTHROPIC_API_KEY) {
-    const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
-    results.push(await safeMeasure(
-      'anthropic (hosted Claude, tool use + Zod)',
-      async () => new AnthropicAIProvider(client, {
-        fastModel: config.AI_MODEL_FAST,
-        smartModel: config.AI_MODEL_SMART,
-        maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
-        timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
-      }),
-      dataset.contracts,
-    ));
-  } else {
-    results.push({
-      name: 'anthropic (hosted Claude, tool use + Zod)',
-      status: 'skipped',
-      detail: 'ANTHROPIC_API_KEY is not set; no external call was made.',
     });
   }
 

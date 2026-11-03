@@ -14,7 +14,7 @@ flowchart TD
     sApi["Express API"]
     sWorker["In-process analysis worker"]
     sDb[("PostgreSQL 15 with pgvector")]
-    sAnthropic["Anthropic API when configured"]
+    sAnthropic["Gemini API when keyed (free tier)"]
     sLocalModel["Local embedding model when RAG is enabled"]
 
     sUser -->|"uses"| sBrowser
@@ -61,7 +61,7 @@ flowchart LR
     end
     subgraph cInfrastructure["Infrastructure"]
         cPostgres["PostgreSQL repositories"]
-        cAI["Anthropic, local neural, or Fake AI provider"]
+        cAI["Gemini, local neural, or Fake AI provider"]
         cExtract["PDF extraction and segmentation"]
         cStorage["Local file storage"]
         cPdf["PDFKit generator"]
@@ -155,8 +155,8 @@ readable in GitHub's Mermaid renderer.
 - Repository and AI interfaces keep application logic independent of concrete
   PostgreSQL and AI implementations. The default is hybrid: `LocalAIProvider`
   (multilingual embeddings + local TrOCR, zero external APIs) classifies every
-  clause, and a hosted adapter (Anthropic Claude or Google Gemini, whichever
-  key is configured) rechecks uncertain clauses and writes letters via
+  clause, and the free Gemini adapter rechecks uncertain clauses and writes
+  letters when `GEMINI_API_KEY` is set via
   `TieredAIProvider`. Set `AI_PROVIDER` to force a single provider;
   `FakeAIProvider` is the deterministic test double.
 - The worker and classification cache are process-local. Run exactly one

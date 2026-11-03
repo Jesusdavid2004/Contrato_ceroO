@@ -58,8 +58,8 @@ Required application settings:
 | `DATABASE_URL` | Private PostgreSQL connection URL; require TLS for managed DB |
 | `JWT_SECRET` | Secret-manager value, at least 16 characters, never a sample/default |
 | `CORS_ORIGIN` | Exact HTTPS origin of the browser frontend |
-| `ANTHROPIC_API_KEY` | Optional; secret-manager value only if the hosted provider is wanted. Empty = local neural AI (models download once to `EMBEDDING_CACHE_DIR`, then run offline) |
-| `AI_PROVIDER` | Explicit provider: `anthropic`/`gemini` (needs its key), `local` (default blueprint, no API), never `fake` in production. Empty = hybrid: local classifies, hosted key (if any) refines + writes |
+| `GEMINI_API_KEY` | Optional free-tier secret; empty = local-only, no external calls |
+| `AI_PROVIDER` | Explicit provider: `gemini` (needs its key), `local` (default blueprint, no API), never `fake` in production. Empty = hybrid: local classifies, Gemini (if keyed) refines + writes |
 | `CONTRACT_FILE_RETENTION` | `none`; retained files are blocked until encrypted private object storage exists |
 | `RAG_ENABLED` | `false` by default; enable only after legal corpus and pgvector readiness review |
 | `EMBEDDING_CACHE_DIR` | Writable persistent cache if RAG is enabled |
@@ -74,7 +74,8 @@ frontend (static site that rewrites `/api/*` to the backend). Steps:
    migrations run `CREATE EXTENSION vector`, which Neon supports.
 2. In Render, choose New > Blueprint and select this repository.
 3. Set the prompted secrets on `contratoclaro-api`: `DATABASE_URL` (Neon),
-   `ANTHROPIC_API_KEY`, and `CORS_ORIGIN` (the HTTPS URL of `contratoclaro-web`).
+   `GEMINI_API_KEY` (free tier, optional — enables the hosted smart tier), and
+   `CORS_ORIGIN` (the HTTPS URL of `contratoclaro-web`).
    `JWT_SECRET` is generated automatically.
 4. If Render adds a suffix to the service name, update the rewrite destination
    in `render.yaml` to the real backend URL and redeploy the frontend.

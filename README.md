@@ -39,7 +39,7 @@ flowchart LR
         Worker["In-process analysis worker"]
         Fake["FakeAIProvider (tests)"]
         Local["LocalAIProvider (embeddings + TrOCR)"]
-        Hosted["Anthropic / Gemini (keyed)"]
+        Hosted["Gemini (keyed, free tier)"]
     end
     subgraph Data["Data"]
         PG[("PostgreSQL 15 + pgvector")]
@@ -73,7 +73,7 @@ docker compose exec -e SEED_DEMO=true backend node dist/scripts/seed-demo.js
 1. Copy the environment template: `Copy-Item .env.example .env`.
 2. Edit `.env`: set `DB_PASSWORD`, `JWT_SECRET`, and
    `DEMO_USER_PASSWORD` (at least 12 characters). For hybrid AI, also set
-   `GEMINI_API_KEY` (free tier) or `ANTHROPIC_API_KEY`. These values are for
+   `GEMINI_API_KEY` (free tier) or nothing at all. These values are for
    local development only.
 3. Build and start PostgreSQL, backend, and frontend:
    `docker compose up --build -d`.
@@ -122,7 +122,7 @@ production infrastructure. Local Compose is not a production deployment.
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS 4, i18next |
 | Backend | Node.js 22, Express 5, TypeScript |
 | Database | PostgreSQL 15 with pgvector |
-| AI | Local neural provider by default (multilingual embeddings + on-device TrOCR, zero APIs); hybrid Anthropic Claude / Google Gemini for low-confidence rechecks and letters when a key is set; deterministic FakeAIProvider for tests only |
+| AI | Local neural provider by default (multilingual embeddings + on-device TrOCR, zero APIs); hybrid free Gemini tier for low-confidence rechecks and letters when a key is set; deterministic FakeAIProvider for tests only |
 | PDF | PDFKit |
 | Tests | Vitest, Testing Library, Supertest, Playwright (mocked + real-backend e2e), axe-core, Lighthouse |
 | Quality | axe-core 0 violations (both themes), Lighthouse reports in docs/quality |
@@ -140,15 +140,14 @@ put real contract data or production credentials into the demo environment.
 | `JWT_SECRET` | Signs access and refresh tokens | Local-only sample; replace before use |
 | `CORS_ORIGIN` | Exact browser origin allowed by the backend | `http://localhost:8080` |
 | `NODE_ENV` | Runtime mode | `development` |
-| `ANTHROPIC_API_KEY` | Optional hosted provider (transcription/classification/letter) | Empty; local neural AI is used, no external API needed |
-| `AI_PROVIDER` | `anthropic`, `gemini`, `local` or `fake` (empty = auto) | `local` |
+| `AI_PROVIDER` | `gemini`, `local` or `fake` (empty = auto) | `local` |
 | `GEMINI_API_KEY` | Free-tier hosted refiner + letter writer ([AI Studio](https://aistudio.google.com/apikey)) | Empty; local model does everything |
 | `RAG_ENABLED` | Enable legal provision retrieval | `false` |
 | `CONTRACT_FILE_RETENTION` | Original upload retention | `none` |
 | `DEMO_USER_EMAIL` | Local synthetic demo account | `demo@example.test` |
 | `DEMO_USER_PASSWORD` | Local demo password; at least 12 characters | Must be set |
 
-Production works without `ANTHROPIC_API_KEY` by using the local neural
+Production works without any API key by using the local neural
 provider (multilingual embeddings + local TrOCR); models download once into
 `EMBEDDING_CACHE_DIR` and then run offline. The deterministic
 `FakeAIProvider` is a test-only double, rejected at production startup.

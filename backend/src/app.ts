@@ -1,5 +1,4 @@
 import express from 'express';
-import Anthropic from '@anthropic-ai/sdk';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -19,8 +18,6 @@ import { LocalFileStorage } from './infrastructure/services/LocalFileStorage';
 import { PdfTextExtractor } from './infrastructure/services/PdfTextExtractor';
 import { RegexClauseSegmenter } from './infrastructure/services/RegexClauseSegmenter';
 import { AdaptiveClauseSegmenter } from './infrastructure/services/AdaptiveClauseSegmenter';
-import { AnthropicAIProvider } from './infrastructure/ai/AnthropicAIProvider';
-import { AnthropicDocumentProcessor } from './infrastructure/ai/AnthropicDocumentProcessor';
 import { FakeAIProvider } from './infrastructure/ai/FakeAIProvider';
 import { LocalAIProvider } from './infrastructure/ai/LocalAIProvider';
 import { TieredAIProvider } from './infrastructure/ai/TieredAIProvider';
@@ -75,24 +72,13 @@ export function createApp(options?: { inMemory?: boolean }) {
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
   const fileStorage = new LocalFileStorage();
-  const anthropicClient = config.ANTHROPIC_API_KEY
-    ? new Anthropic({ apiKey: config.ANTHROPIC_API_KEY })
-    : null;
-  // Hybrid AI wiring: the fast tier classifies every clause (local model unless
-  // overridden); the smart tier (low-confidence rechecks + letters) uses a
-  // hosted provider when a key is configured, otherwise the local model.
+  // Hybrid AI wiring: the fast tier classifies every clause with the local
+  // model; the smart tier (low-confidence rechecks + letters) uses the free
+  // Gemini provider when GEMINI_API_KEY is set, otherwise the local model.
   const tiers = isInMemory ? { fast: 'fake' as const, smart: 'fake' as const } : resolveTierProviders();
   const localEmbedder = new HuggingFaceLocalEmbeddingProvider(config.EMBEDDING_CACHE_DIR);
   const buildProvider = (name: typeof tiers.fast | typeof tiers.smart) => {
     switch (name) {
-      case 'anthropic':
-        if (!anthropicClient) throw new Error('AI_PROVIDER=anthropic requires ANTHROPIC_API_KEY.');
-        return new AnthropicAIProvider(anthropicClient, {
-          fastModel: config.AI_MODEL_FAST,
-          smartModel: config.AI_MODEL_SMART,
-          maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
-          timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
-        });
       case 'gemini':
         if (!config.GEMINI_API_KEY) throw new Error('AI_PROVIDER=gemini requires GEMINI_API_KEY.');
         return new GeminiAIProvider({
@@ -111,13 +97,11 @@ export function createApp(options?: { inMemory?: boolean }) {
   const aiProvider = new TieredAIProvider(buildProvider(tiers.fast), buildProvider(tiers.smart));
   const activeProvider = tiers.fast === tiers.smart ? tiers.fast : `${tiers.fast}+${tiers.smart}`;
   logger.info('AI providers active', { fast: tiers.fast, smart: tiers.smart });
-  const documentProcessor = tiers.smart === 'anthropic' && anthropicClient
-    ? new AnthropicDocumentProcessor(anthropicClient, config.AI_MODEL_FAST)
-    : tiers.smart === 'gemini' && config.GEMINI_API_KEY
-      ? new GeminiDocumentProcessor(config.GEMINI_API_KEY, config.GEMINI_MODEL_FAST)
-      : tiers.smart === 'local'
-        ? new LocalDocumentProcessor(config.EMBEDDING_CACHE_DIR)
-        : new OfflineDocumentProcessor();
+  const documentProcessor = tiers.smart === 'gemini' && config.GEMINI_API_KEY
+    ? new GeminiDocumentProcessor(config.GEMINI_API_KEY, config.GEMINI_MODEL_FAST)
+    : tiers.smart === 'local'
+      ? new LocalDocumentProcessor(config.EMBEDDING_CACHE_DIR)
+      : new OfflineDocumentProcessor();
   const regexClauseSegmenter = new RegexClauseSegmenter();
   const clauseSegmenter = new AdaptiveClauseSegmenter(regexClauseSegmenter, documentProcessor);
   const textExtractor = new PdfTextExtractor(documentProcessor);

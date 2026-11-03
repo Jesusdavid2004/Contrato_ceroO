@@ -43,9 +43,9 @@
 6. **Download:** Download the saved letter as PDF and verify the updated wording.
 7. **Explain privacy and AI:** State that the demo stores synthetic structured
    results, does not store an original upload, and runs a hybrid pipeline by
-   default (local neural model classifies; a hosted provider only refines
-   uncertain clauses and writes letters when `ANTHROPIC_API_KEY` or
-   `GEMINI_API_KEY` is set — otherwise everything stays on-device). Mention
+   default (local neural model classifies; free Gemini only refines
+   uncertain clauses and writes letters when `GEMINI_API_KEY` is set —
+   otherwise everything stays on-device). Mention
    the external-AI consent notice shown before upload in that case. Do not
    represent the offline evaluation as model accuracy.
 8. **Show resilience (optional):** Restart the backend mid-analysis to show the

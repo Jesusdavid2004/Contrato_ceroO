@@ -19,7 +19,7 @@ penetration test or a legal compliance certification.
 - Database access uses parameterized PostgreSQL queries. Centralized API errors
   return a code and translation key rather than provider stack traces.
 - The production backend requires an explicitly configured JWT secret and CORS
-  origin. With no `ANTHROPIC_API_KEY` it uses the local neural provider
+  origin. With no `GEMINI_API_KEY` it uses the local neural provider
   (on-device embeddings + OCR); the deterministic `FakeAIProvider` test double
   is rejected in production. It rejects non-ephemeral file retention.
 - Nginx sets `X-Content-Type-Options`, `Referrer-Policy`, and `X-Frame-Options`.
@@ -56,8 +56,9 @@ penetration test or a legal compliance certification.
 - Terminate HTTPS at a managed ingress/reverse proxy, redirect HTTP to HTTPS,
   set HSTS there, and expose no direct public route to PostgreSQL or backend.
 - Set `NODE_ENV=production`, a unique random `JWT_SECRET`, the exact frontend
-  origin in `CORS_ORIGIN`, a production database URL/password, and
-  `ANTHROPIC_API_KEY` using the platform's secret manager.
+  origin in `CORS_ORIGIN`, a production database URL/password, and optionally
+  `GEMINI_API_KEY` (free tier) if hosted refinement is wanted, using the
+  platform's secret manager.
 - Leave `CONTRACT_FILE_RETENTION=none`; do not put real contract data into the
   demo account or logs.
 - Keep `RAG_ENABLED=false` until pgvector availability, reviewed legal corpus,

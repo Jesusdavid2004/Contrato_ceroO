@@ -1,5 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
-import Anthropic from '@anthropic-ai/sdk';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { AnalyzeContractUseCase } from '../src/application/use-cases/AnalyzeContractUseCase';
 import { Contract } from '../src/domain/entities/Contract';
 import type {
@@ -17,7 +16,7 @@ import { FakeAIProvider } from '../src/infrastructure/ai/FakeAIProvider';
 import { InMemoryAIClassificationCache } from '../src/infrastructure/services/InMemoryAIClassificationCache';
 import { InMemoryAIUsageRepository } from '../src/infrastructure/repositories/AIUsageRepositoryImpl';
 import { InMemoryContractRepository } from '../src/infrastructure/repositories/ContractRepositoryImpl';
-import { AnthropicAIProvider } from '../src/infrastructure/ai/AnthropicAIProvider';
+import { GeminiAIProvider } from '../src/infrastructure/ai/GeminiAIProvider';
 import { PostgresLegalContextProvider } from '../src/infrastructure/services/PostgresLegalContextProvider';
 
 class RecordingAIProvider implements AIProvider {
@@ -276,50 +275,48 @@ describe('FakeAIProvider', () => {
   });
 });
 
-describe('AnthropicAIProvider', () => {
-  it('retries one invalid structured response and filters citations absent from context', async () => {
-    const client = new Anthropic({ apiKey: 'test-key' });
-    let requestCount = 0;
-    const response = (
-      riskLevel: string,
-    ): Anthropic.Messages.Message => ({
-      id: `message-${requestCount}`,
-      type: 'message',
-      role: 'assistant',
-      model: 'test-model',
-      stop_reason: 'tool_use',
-      stop_sequence: null,
-      content: [{
-        type: 'tool_use',
-        id: `tool-${requestCount}`,
-        name: 'classify_contract_clauses',
-        input: {
-          clauses: [{
-            clause_id: 'clause-1',
-            risk_level: riskLevel,
-            confidence: 0.9,
-            plain_explanation: 'The term allows a unilateral change.',
-            why_risky: 'Only one party controls changes.',
-            legal_basis: [
-              { reference: 'Article 15', summary: 'Supported provision.' },
-              { reference: 'Article 99', summary: 'Unsupported provision.' },
-            ],
-            suggested_change: 'Require mutual written agreement.',
-          }],
-        },
+describe('GeminiAIProvider', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  function geminiResponse(text: string) {
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text }] } }],
+        usageMetadata: { promptTokenCount: 5, candidatesTokenCount: 7 },
+      }),
+    };
+  }
+
+  function geminiClassifyPayload(riskLevel: string) {
+    return JSON.stringify({
+      clauses: [{
+        clause_id: 'clause-1',
+        risk_level: riskLevel,
+        confidence: 0.9,
+        plain_explanation: 'The term allows a unilateral change.',
+        why_risky: 'Only one party controls changes.',
+        legal_basis: [
+          { reference: 'Article 15', summary: 'Supported provision.' },
+          { reference: 'Article 99', summary: 'Unsupported provision.' },
+        ],
+        suggested_change: 'Require mutual written agreement.',
       }],
-      usage: {
-        input_tokens: 5,
-        output_tokens: 7,
-        cache_creation_input_tokens: null,
-        cache_read_input_tokens: null,
-      },
-    }) as unknown as Anthropic.Messages.Message;
-    const createMessage = vi.spyOn(client.messages, 'create').mockImplementation((async () => {
+    });
+  }
+
+  it('retries one invalid structured response and filters citations absent from context', async () => {
+    let requestCount = 0;
+    const fetchMock = vi.fn(async () => {
       requestCount += 1;
-      return response(requestCount === 1 ? 'urgent' : 'high');
-    }) as never);
-    const provider = new AnthropicAIProvider(client, {
+      return geminiResponse(geminiClassifyPayload(requestCount === 1 ? 'urgent' : 'high'));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const provider = new GeminiAIProvider({
+      apiKey: 'test-key',
       fastModel: 'fast-test',
       smartModel: 'smart-test',
       maxTokens: 1024,
@@ -349,7 +346,7 @@ describe('AnthropicAIProvider', () => {
       ],
     });
 
-    expect(createMessage).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(result.clauses[0].risk_level).toBe('high');
     expect(result.clauses[0].legal_basis).toEqual([
       { reference: 'Article 15', summary: 'Supported provision.' },
@@ -359,30 +356,16 @@ describe('AnthropicAIProvider', () => {
   });
 
   it('retries a letter missing localized placeholders before accepting the result', async () => {
-    const client = new Anthropic({ apiKey: 'test-key' });
     let requestCount = 0;
-    const response = (text: string): Anthropic.Messages.Message => ({
-      id: `letter-${requestCount}`,
-      type: 'message',
-      role: 'assistant',
-      model: 'test-model',
-      stop_reason: 'end_turn',
-      stop_sequence: null,
-      content: [{ type: 'text', text }],
-      usage: {
-        input_tokens: 5,
-        output_tokens: 7,
-        cache_creation_input_tokens: null,
-        cache_read_input_tokens: null,
-      },
-    }) as unknown as Anthropic.Messages.Message;
-    const createMessage = vi.spyOn(client.messages, 'create').mockImplementation((async () => {
+    const fetchMock = vi.fn(async () => {
       requestCount += 1;
-      return response(requestCount === 1
+      return geminiResponse(requestCount === 1
         ? 'Estimado/a: Solicito cambiar la cláusula.'
         : 'Estimado/a [DESTINATARIO]: revisar [REFERENCIA DEL CONTRATO]. [SU NOMBRE] [FECHA]');
-    }) as never);
-    const provider = new AnthropicAIProvider(client, {
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const provider = new GeminiAIProvider({
+      apiKey: 'test-key',
       fastModel: 'fast-test',
       smartModel: 'smart-test',
       maxTokens: 1024,
@@ -404,8 +387,7 @@ describe('AnthropicAIProvider', () => {
       }],
     });
 
-    expect(createMessage).toHaveBeenCalledTimes(2);
-    expect(createMessage.mock.calls[1][0].messages[0].content).toContain('validation_feedback');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(letter).toContain('[DESTINATARIO]');
   });
 });

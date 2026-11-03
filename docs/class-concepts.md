@@ -66,6 +66,7 @@ Line numbers refer to the current `main` tree.
 - Queue + worker: `InProcessAnalysisWorker.ts`; recovery of interrupted jobs:
   `RecoverStuckContractsUseCase.ts` with `errors.analysis_interrupted`.
 - AI abstraction: `AIProvider` interface with local (embeddings, zero API),
-  Anthropic (tool use + Zod + 1 retry), and fake (tests) adapters.
+  free Gemini (JSON mode + Zod + 1 retry), and fake (tests) adapters, combined
+  by `TieredAIProvider` (fast local tier + smart hosted tier).
 - Logs carry counts/ids, never clause text (`backend/test/log-privacy.test.ts`
   pins this); the client only ever sees `{ code, message_key }`.

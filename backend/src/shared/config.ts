@@ -24,9 +24,6 @@ const envSchema = z.object({
     .optional()
     .transform((val) => val === 'true'),
   EMBEDDING_CACHE_DIR: z.string().default('storage/models'),
-  ANTHROPIC_API_KEY: z.string().optional(),
-  AI_MODEL_FAST: z.string().default('claude-3-5-haiku-20241022'),
-  AI_MODEL_SMART: z.string().default('claude-3-5-sonnet-20241022'),
   GEMINI_API_KEY: z.string().optional(),
   GEMINI_MODEL_FAST: z.string().default('gemini-3.5-flash-lite'),
   GEMINI_MODEL_SMART: z.string().default('gemini-3.5-flash'),
@@ -36,7 +33,7 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   GRPC_INTERNAL_TOKEN: z.string().default('dev-internal-token'),
   GRPC_PORT: z.coerce.number().int().positive().default(50051),
-  AI_PROVIDER: z.enum(['anthropic', 'gemini', 'local', 'fake']).optional(),
+  AI_PROVIDER: z.enum(['gemini', 'local', 'fake']).optional(),
   ANALYSIS_JOB_TIMEOUT_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
   SEED_DEMO: z
     .string()
@@ -66,7 +63,7 @@ const envSchema = z.object({
       message: 'CORS_ORIGIN must be explicitly configured in production.',
     });
   }
-  // ANTHROPIC_API_KEY is optional: without it the backend uses the local
+  // GEMINI_API_KEY is optional: without it the backend uses the local
   // neural provider (embeddings + local OCR), no external API is required.
   if (environment.CONTRACT_FILE_RETENTION !== 'none') {
     context.addIssue({
@@ -79,7 +76,7 @@ const envSchema = z.object({
     context.addIssue({
       code: 'custom',
       path: ['AI_PROVIDER'],
-      message: 'The deterministic fake provider is a test double and must never run in production. Use anthropic, gemini, or local.',
+      message: 'The deterministic fake provider is a test double and must never run in production. Use gemini or local.',
     });
   }
 });
@@ -94,30 +91,28 @@ if (!parsed.success) {
 export const config = parsed.data;
 export type Config = typeof config;
 
-export type AIProviderName = 'anthropic' | 'gemini' | 'local' | 'fake';
+export type AIProviderName = 'gemini' | 'local' | 'fake';
 export type LocalTierName = 'local' | 'fake';
 
 export interface TierSelection {
-  /** Bulk classification of every clause: local model unless overridden. */
+  /** Bulk classification of every clause: the on-device model, unless overridden. */
   fast: AIProviderName;
-  /** Low-confidence rechecks and objection letters: hosted when keyed. */
+  /** Low-confidence rechecks and objection letters: Gemini when keyed, else local. */
   smart: AIProviderName;
 }
 
 /**
- * Resolves per-tier providers so the local model and the hosted API work
+ * Resolves per-tier providers so the local model and the free Gemini API work
  * together. An explicit AI_PROVIDER forces a single provider for both tiers
  * (tests always use the fake double); otherwise the fast tier stays local
- * and the smart tier uses Anthropic or Gemini when a key is configured.
+ * and the smart tier uses Gemini when a key is configured.
  */
 export function resolveTierProviders(environment: Config = config): TierSelection {
   if (environment.NODE_ENV === 'test') return { fast: 'fake', smart: 'fake' };
   if (environment.AI_PROVIDER === 'fake' || environment.AI_PROVIDER === 'local') {
     return { fast: environment.AI_PROVIDER, smart: environment.AI_PROVIDER };
   }
-  if (environment.AI_PROVIDER === 'anthropic') return { fast: 'anthropic', smart: 'anthropic' };
   if (environment.AI_PROVIDER === 'gemini') return { fast: 'gemini', smart: 'gemini' };
-  if (environment.ANTHROPIC_API_KEY) return { fast: 'local', smart: 'anthropic' };
   if (environment.GEMINI_API_KEY) return { fast: 'local', smart: 'gemini' };
   return { fast: 'local', smart: 'local' };
 }

@@ -23,8 +23,6 @@ services:
         generateValue: true
       - key: DATABASE_URL
         sync: false
-      - key: ANTHROPIC_API_KEY
-        sync: false
       - key: CORS_ORIGIN
         sync: false
 
