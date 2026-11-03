@@ -52,7 +52,7 @@ export function Home() {
         <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight sm:text-[36px]">
           {t('home.headline', 'Analyze your contracts')}
         </h1>
-        <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[var(--color-text-muted)]">
+        <p className="mt-2 max-w-2xl text-[15px] leading-relaxed text-[var(--color-text-muted)]">
           {t('home.subtitle', 'Identify risks, understand your clauses and make informed decisions.')}
         </p>
       </motion.div>
@@ -71,14 +71,14 @@ export function Home() {
         )}
       </motion.div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 items-stretch gap-6 sm:grid-cols-3">
         {MODULES.map(({ icon: Icon, titleKey, descKey }, i) => (
           <motion.div
             key={titleKey}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.12 + i * 0.06 }}
-            className="floating-card"
+            className="floating-card flex h-full flex-col"
           >
             <span className="inline-flex rounded-[13px] bg-[var(--color-action-soft)] p-2.5">
               <Icon aria-hidden="true" className="h-5 w-5 text-[var(--color-action)]" />

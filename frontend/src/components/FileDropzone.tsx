@@ -38,7 +38,7 @@ export function FileDropzone({
         setIsDragging(false);
         if (!isUploading && e.dataTransfer.files?.[0]) onFile(e.dataTransfer.files[0]);
       }}
-      className={`flex cursor-pointer flex-col items-center gap-3 rounded-[24px] border border-dashed px-8 py-12 text-center transition-all duration-200 ${
+      className={`flex min-h-[300px] cursor-pointer flex-col items-center justify-center gap-3 rounded-[24px] border border-dashed px-8 py-16 text-center transition-all duration-200 ${
         isDragging
           ? 'border-[var(--color-action)] bg-[var(--color-action-soft)] scale-[1.01]'
           : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-action)]'
