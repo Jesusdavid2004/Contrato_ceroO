@@ -30,6 +30,7 @@ services:
       JWT_SECRET: ${JWT_SECRET:-local-only-change-this-secret}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       CONTRACT_FILE_RETENTION: ${CONTRACT_FILE_RETENTION:-none}
+      AI_PROVIDER: ${AI_PROVIDER:-local}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       DEMO_USER_EMAIL: ${DEMO_USER_EMAIL:-}
       DEMO_USER_PASSWORD: ${DEMO_USER_PASSWORD:-}
