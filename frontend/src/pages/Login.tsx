@@ -34,7 +34,7 @@ export function Login() {
     >
       <div className="flex flex-col items-center gap-1.5 text-center">
         <span className="mb-2 flex h-12 w-12 items-center justify-center rounded-[17px] bg-[var(--color-action-soft)]">
-          <ShieldCheck className="h-6 w-6 text-[var(--color-action)]" />
+          <ShieldCheck className="h-6 w-6 text-[var(--color-action-text)]" />
         </span>
         <h1 className="text-[24px] font-bold tracking-tight">{t('auth.login_title', 'Welcome back')}</h1>
         <p className="text-[14px] text-[var(--color-text-muted)]">
@@ -80,7 +80,7 @@ export function Login() {
 
       <p className="mt-6 text-center text-[13px] text-[var(--color-text-muted)]">
         {t('auth.no_account', "Don't have an account?")}{' '}
-        <Link to="/register" className="font-semibold text-[var(--color-action)] hover:underline">
+        <Link to="/register" className="font-semibold text-[var(--color-action-text)] hover:underline">
           {t('auth.register_link', 'Sign up free')}
         </Link>
       </p>

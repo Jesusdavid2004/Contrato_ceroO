@@ -20,7 +20,7 @@ export function TextField({ label, error, id, className = '', ...rest }: TextFie
         {...rest}
       />
       {error && (
-        <p role="alert" className="text-[13px] font-medium text-red-500">
+        <p role="alert" className="text-[13px] font-medium text-[var(--color-risk-high-text)]">
           {error}
         </p>
       )}
@@ -55,7 +55,7 @@ export function PasswordField({ label, error, id, ...rest }: TextFieldProps) {
         </button>
       </div>
       {error && (
-        <p role="alert" className="text-[13px] font-medium text-red-500">
+        <p role="alert" className="text-[13px] font-medium text-[var(--color-risk-high-text)]">
           {error}
         </p>
       )}

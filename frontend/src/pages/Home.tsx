@@ -87,7 +87,7 @@ export function Home() {
           <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             {t('consent.external_notice')}{' '}
-            <Link to="/privacy" className="font-semibold text-[var(--color-action)] hover:underline">
+            <Link to="/privacy" className="font-semibold text-[var(--color-action-text)] hover:underline">
               {t('consent.learn_more')}
             </Link>
           </span>
@@ -102,7 +102,7 @@ export function Home() {
       >
         <FileDropzone isUploading={isUploading} stage={uploadStage} onFile={(f) => void uploadFile(f)} />
         {uploadError && (
-          <p role="alert" className="px-2 pb-1 pt-3 text-[13px] font-medium text-red-500">
+          <p role="alert" className="px-2 pb-1 pt-3 text-[13px] font-medium text-[var(--color-risk-high-text)]">
             {uploadError}
           </p>
         )}
@@ -118,7 +118,7 @@ export function Home() {
             className="floating-card flex h-full flex-col"
           >
             <span className="inline-flex rounded-[13px] bg-[var(--color-action-soft)] p-2.5">
-              <Icon aria-hidden="true" className="h-5 w-5 text-[var(--color-action)]" />
+              <Icon aria-hidden="true" className="h-5 w-5 text-[var(--color-action-text)]" />
             </span>
             <h2 className="mt-3 text-[15px] font-bold">{t(titleKey)}</h2>
             <p className="mt-1 text-[13px] leading-relaxed text-[var(--color-text-muted)]">{t(descKey)}</p>

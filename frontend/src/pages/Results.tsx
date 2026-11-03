@@ -77,7 +77,7 @@ export function Results() {
   if (!isContractAnalysisResult(dataState)) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center space-y-4 text-center">
-        <p className="text-[18px] font-bold text-red-500">{t('results.invalid_data')}</p>
+        <p className="text-[18px] font-bold text-[var(--color-risk-high-text)]">{t('results.invalid_data')}</p>
         <Button onClick={() => navigate('/')}>{t('results.try_again')}</Button>
       </div>
     );
@@ -181,7 +181,7 @@ export function Results() {
       <button
         type="button"
         onClick={() => navigate('/')}
-        className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-action)]"
+        className="flex items-center gap-1.5 text-[13px] font-semibold text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-action-text)]"
       >
         <ArrowLeft aria-hidden="true" className="h-4 w-4" />
         {t('results.back')}
@@ -283,7 +283,7 @@ export function Results() {
         <p
           role={errorKey ? 'alert' : 'status'}
           aria-live={errorKey ? 'assertive' : 'polite'}
-          className={`text-[13px] font-medium ${errorKey ? 'text-red-500' : 'text-[var(--color-risk-low-text)]'}`}
+          className={`text-[13px] font-medium ${errorKey ? 'text-[var(--color-risk-high-text)]' : 'text-[var(--color-risk-low-text)]'}`}
         >
           {t(errorKey || statusKey || '')}
         </p>

@@ -35,7 +35,7 @@ export function Register() {
     >
       <div className="flex flex-col items-center gap-1.5 text-center">
         <span className="mb-2 flex h-12 w-12 items-center justify-center rounded-[17px] bg-[var(--color-action-soft)]">
-          <ShieldCheck className="h-6 w-6 text-[var(--color-action)]" />
+          <ShieldCheck className="h-6 w-6 text-[var(--color-action-text)]" />
         </span>
         <h1 className="text-[24px] font-bold tracking-tight">{t('auth.register_title', 'Create account')}</h1>
         <p className="text-[14px] text-[var(--color-text-muted)]">
@@ -92,7 +92,7 @@ export function Register() {
 
       <p className="mt-6 text-center text-[13px] text-[var(--color-text-muted)]">
         {t('auth.have_account', 'Already have an account?')}{' '}
-        <Link to="/login" className="font-semibold text-[var(--color-action)] hover:underline">
+        <Link to="/login" className="font-semibold text-[var(--color-action-text)] hover:underline">
           {t('auth.login_link', 'Sign in')}
         </Link>
       </p>

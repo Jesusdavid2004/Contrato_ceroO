@@ -58,9 +58,9 @@ export function FileDropzone({
       />
       <span className="flex h-13 w-13 items-center justify-center rounded-[18px] bg-[var(--color-action-soft)] p-3.5">
         {isUploading ? (
-          <Loader2 aria-hidden="true" className="h-6 w-6 animate-spin text-[var(--color-action)]" />
+          <Loader2 aria-hidden="true" className="h-6 w-6 animate-spin text-[var(--color-action-text)]" />
         ) : (
-          <FileUp aria-hidden="true" className="h-6 w-6 text-[var(--color-action)]" />
+          <FileUp aria-hidden="true" className="h-6 w-6 text-[var(--color-action-text)]" />
         )}
       </span>
       <span className="text-[16px] font-bold">

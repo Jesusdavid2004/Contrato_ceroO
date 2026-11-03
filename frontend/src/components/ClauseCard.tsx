@@ -57,7 +57,7 @@ export function ClauseCard({ clause, defaultOpen = false }: { clause: ContractCl
             <div className="space-y-4 border-t border-[var(--color-border)] p-5">
               {clause.plain_explanation && (
                 <div className="rounded-[14px] bg-[var(--color-surface-2)] p-4">
-                  <p className="text-[11px] font-bold uppercase tracking-wider opacity-60">
+                  <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                     {t('results.explanation')}
                   </p>
                   <p className="mt-1 text-[14px] leading-relaxed">{clause.plain_explanation}</p>

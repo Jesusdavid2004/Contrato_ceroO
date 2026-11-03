@@ -191,7 +191,7 @@ export function History() {
                 className="floating-card flex items-center gap-4 p-4!"
               >
                 <span className="hidden rounded-[14px] bg-[var(--color-surface-2)] p-3 sm:block">
-                  <FileText aria-hidden="true" className="h-5 w-5 text-[var(--color-action)]" />
+                  <FileText aria-hidden="true" className="h-5 w-5 text-[var(--color-action-text)]" />
                 </span>
 
                 <div className="min-w-0 flex-1">
@@ -212,7 +212,7 @@ export function History() {
                     title={t('history.open')}
                     disabled={!isReady || isOpening || isDeleting}
                     onClick={() => void openContract(contract)}
-                    className="rounded-[12px] p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-action-soft)] hover:text-[var(--color-action)] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="rounded-[12px] p-2 text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-action-soft)] hover:text-[var(--color-action-text)] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     {isOpening ? (
                       <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
@@ -242,7 +242,7 @@ export function History() {
       )}
 
       {actionError && !loadingError && (
-        <p role="alert" className="flex items-center gap-2 text-[13px] font-medium text-red-500">
+        <p role="alert" className="flex items-center gap-2 text-[13px] font-medium text-[var(--color-risk-high-text)]">
           <AlertCircle aria-hidden="true" className="h-4 w-4" />
           {t(actionError, { defaultValue: t('errors.api_error') })}
         </p>

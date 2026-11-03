@@ -28,13 +28,13 @@ function Row({
       <div className="flex min-w-0 flex-1 items-center gap-4">
         <span
           className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[13px] ${
-            danger ? 'bg-red-500/10 text-red-500' : 'bg-[var(--color-surface-2)] text-[var(--color-action)]'
+            danger ? 'bg-[var(--color-risk-high-bg)] text-[var(--color-risk-high-text)]' : 'bg-[var(--color-surface-2)] text-[var(--color-action-text)]'
           }`}
         >
           {icon}
         </span>
         <div className="min-w-0">
-          <p className={`truncate text-[14px] font-semibold ${danger ? 'text-red-500' : ''}`}>{title}</p>
+          <p className={`truncate text-[14px] font-semibold ${danger ? 'text-[var(--color-risk-high-text)]' : ''}`}>{title}</p>
           <p className="truncate text-[13px] text-[var(--color-text-muted)]">{desc}</p>
         </div>
       </div>
@@ -128,9 +128,9 @@ export function Settings() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, delay: 0.12 }}
         aria-label={t('settings.danger_zone', 'Danger zone')}
-        className="floating-panel border-red-200! p-1! dark:border-red-500/20!"
+        className="floating-panel border-[var(--color-border)] p-1! dark:border-[var(--color-border)]"
       >
-        <h2 className="px-4 pb-1 pt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-red-500">
+        <h2 className="px-4 pb-1 pt-4 text-[11px] font-bold uppercase tracking-[0.08em] text-[var(--color-risk-high-text)]">
           {t('settings.danger_zone', 'Danger zone')}
         </h2>
         {!confirmingDelete ? (
@@ -148,7 +148,7 @@ export function Settings() {
                     setDeleteError(null);
                     setPassword('');
                   }}
-                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-red-200 bg-red-500/10 px-5 text-[13px] font-semibold text-red-500 transition-colors hover:bg-red-500/20 dark:border-red-500/20"
+                  className="inline-flex h-11 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-risk-high-bg)] px-5 text-[13px] font-semibold text-[var(--color-risk-high-text)] transition-colors hover:brightness-95 dark:hover:brightness-125"
                 >
                   {t('settings.delete_account', 'Delete account')}
                 </button>
@@ -169,8 +169,8 @@ export function Settings() {
                 className="w-full rounded-[13px] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-2.5 font-normal focus:border-[var(--color-action)] focus:outline-none"
               />
             </label>
-            {deleteError && (
-              <p role="alert" className="text-[13px] font-medium text-red-500">
+        {deleteError && (
+          <p role="alert" className="text-[13px] font-medium text-[var(--color-risk-high-text)]">
                 {deleteError}
               </p>
             )}

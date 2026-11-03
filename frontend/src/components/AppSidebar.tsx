@@ -50,7 +50,7 @@ export function AppSidebar() {
                 }`}
               >
                 <Icon
-                  className={`h-[18px] w-[18px] ${active ? 'text-[var(--color-action)]' : ''}`}
+                  className={`h-[18px] w-[18px] ${active ? 'text-[var(--color-action-text)]' : ''}`}
                 />
                 {t(labelKey, labelKey)}
               </Link>
@@ -97,7 +97,7 @@ export function AppSidebar() {
               aria-current={active ? 'page' : undefined}
               aria-label={t(labelKey, labelKey)}
               className={`flex flex-1 flex-col items-center gap-0.5 rounded-[16px] py-2 text-[11px] font-semibold transition-colors ${
-                active ? 'text-[var(--color-action)]' : 'text-[var(--color-text-muted)]'
+                active ? 'text-[var(--color-action-text)]' : 'text-[var(--color-text-muted)]'
               }`}
             >
               <Icon className="h-5 w-5" />
