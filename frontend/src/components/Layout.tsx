@@ -1,18 +1,21 @@
 import { ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
 import { AppSidebar } from './AppSidebar';
 import { AppHeader } from './AppHeader';
 import { useAuth } from '../context/AuthContext';
 
 export function Layout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const location = useLocation();
 
   if (!user) {
+    const wide = location.pathname === '/privacy';
     return (
       <div
         className="flex min-h-svh items-center justify-center px-4 py-10"
         style={{ backgroundColor: 'var(--color-bg)', color: 'var(--color-text)' }}
       >
-        <div className="w-full max-w-md">{children}</div>
+        <div className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'}`}>{children}</div>
       </div>
     );
   }

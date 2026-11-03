@@ -84,6 +84,11 @@ export function Login() {
           {t('auth.register_link', 'Sign up free')}
         </Link>
       </p>
+      <p className="mt-2 text-center text-[12px] text-[var(--color-text-muted)]">
+        <Link to="/privacy" className="hover:underline">
+          {t('privacy.link', 'Privacy notice')}
+        </Link>
+      </p>
     </motion.div>
   );
 }

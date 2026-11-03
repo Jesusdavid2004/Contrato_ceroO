@@ -8,6 +8,7 @@ import { Login } from './pages/Login';
 import { Register } from './pages/Register';
 import { History } from './pages/History';
 import { Settings } from './pages/Settings';
+import { Privacy } from './pages/Privacy';
 import './i18n';
 
 function App() {
@@ -19,6 +20,7 @@ function App() {
             {/* Public routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/privacy" element={<Privacy />} />
 
             {/* Protected routes */}
             <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />

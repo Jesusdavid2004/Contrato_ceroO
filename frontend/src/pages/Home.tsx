@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { FileSearch, Sparkles, PenLine } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { FileSearch, Info, PenLine, Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ContractApiError, uploadAndAnalyzeContract } from '../services/contracts';
 import { preHashFile } from '../lib/fileHash';
@@ -21,6 +21,20 @@ export function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStage, setUploadStage] = useState<string | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [externalAi, setExternalAi] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/ready')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((body: { provider?: string } | null) => {
+        if (!cancelled && body?.provider === 'anthropic') setExternalAi(true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const uploadFile = async (file: File) => {
     setIsUploading(true);
@@ -64,6 +78,18 @@ export function Home() {
           {t('home.subtitle', 'Identify risks, understand your clauses and make informed decisions.')}
         </p>
       </motion.div>
+
+      {externalAi && (
+        <p className="flex items-start gap-2 rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-[13px] leading-relaxed text-[var(--color-text-muted)]">
+          <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>
+            {t('consent.external_notice')}{' '}
+            <Link to="/privacy" className="font-semibold text-[var(--color-action)] hover:underline">
+              {t('consent.learn_more')}
+            </Link>
+          </span>
+        </p>
+      )}
 
       <motion.div
         initial={{ opacity: 0, y: 12 }}

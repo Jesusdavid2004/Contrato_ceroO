@@ -96,6 +96,11 @@ export function Register() {
           {t('auth.login_link', 'Sign in')}
         </Link>
       </p>
+      <p className="mt-2 text-center text-[12px] text-[var(--color-text-muted)]">
+        <Link to="/privacy" className="hover:underline">
+          {t('privacy.link', 'Privacy notice')}
+        </Link>
+      </p>
     </motion.div>
   );
 }
