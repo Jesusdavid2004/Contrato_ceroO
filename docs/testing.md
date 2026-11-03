@@ -8,6 +8,8 @@
   (`test/local-ai-provider.test.ts` covers the local neural ranking without
   downloading models), so the suite stays offline. DB-backed suites run against
   the Compose PostgreSQL/pgvector instance.
+- Local neural smoke (verified 2026-11-03, real `multilingual-e5-small` weights,
+  no network): abusive clause → `high 0.66`, balanced clause → `low 0.72`.
 - `npm run build` — `tsc -p tsconfig.build.json`.
 - `npm run evaluate` — regenerates `docs/evaluation.md` from the synthetic
   fixture set (10 clauses, offline only, not a legal benchmark).
