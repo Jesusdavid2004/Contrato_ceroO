@@ -25,7 +25,7 @@ interface EvaluationContract {
 
 interface ProviderResult {
   name: string;
-  status: 'measured' | 'skipped';
+  status: 'measured' | 'skipped' | 'error';
   detail?: string;
   total?: number;
   truePositive?: number;
@@ -85,12 +85,20 @@ async function measure(name: string, provider: AIProvider, contracts: Evaluation
   };
 }
 
-async function buildLocal(): Promise<AIProvider> {
-  const embedder = new HuggingFaceLocalEmbeddingProvider(
-    resolve(process.cwd(), config.EMBEDDING_CACHE_DIR),
-  );
-  await embedder.embed('evaluation warm-up probe', 'query');
-  return new LocalAIProvider(embedder);
+async function safeMeasure(
+  name: string,
+  build: () => Promise<AIProvider>,
+  contracts: EvaluationContract[],
+): Promise<ProviderResult> {
+  try {
+    return await measure(name, await build(), contracts);
+  } catch (error) {
+    return {
+      name,
+      status: 'error',
+      detail: `provider failed during evaluation: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  }
 }
 
 async function main(): Promise<void> {
@@ -100,10 +108,19 @@ async function main(): Promise<void> {
   }
 
   const results: ProviderResult[] = [];
-  results.push(await measure('fake (deterministic regex double)', new FakeAIProvider(), dataset.contracts));
+  results.push(await safeMeasure('fake (deterministic regex double)', async () => new FakeAIProvider(), dataset.contracts));
 
   try {
-    results.push(await measure('local (on-device multilingual-e5 prototypes)', await buildLocal(), dataset.contracts));
+    await new HuggingFaceLocalEmbeddingProvider(
+      resolve(process.cwd(), config.EMBEDDING_CACHE_DIR),
+    ).embed('evaluation warm-up probe', 'query');
+    results.push(await safeMeasure(
+      'local (on-device multilingual-e5 prototypes)',
+      async () => new LocalAIProvider(new HuggingFaceLocalEmbeddingProvider(
+        resolve(process.cwd(), config.EMBEDDING_CACHE_DIR),
+      )),
+      dataset.contracts,
+    ));
   } catch (error) {
     results.push({
       name: 'local (on-device multilingual-e5 prototypes)',
@@ -114,9 +131,9 @@ async function main(): Promise<void> {
 
   if (config.ANTHROPIC_API_KEY) {
     const client = new Anthropic({ apiKey: config.ANTHROPIC_API_KEY });
-    results.push(await measure(
+    results.push(await safeMeasure(
       'anthropic (hosted Claude, tool use + Zod)',
-      new AnthropicAIProvider(client, {
+      async () => new AnthropicAIProvider(client, {
         fastModel: config.AI_MODEL_FAST,
         smartModel: config.AI_MODEL_SMART,
         maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
@@ -133,10 +150,10 @@ async function main(): Promise<void> {
   }
 
   if (config.GEMINI_API_KEY) {
-    results.push(await measure(
+    results.push(await safeMeasure(
       'gemini (hosted Gemini, JSON mode + Zod)',
-      new GeminiAIProvider({
-        apiKey: config.GEMINI_API_KEY,
+      async () => new GeminiAIProvider({
+        apiKey: config.GEMINI_API_KEY as string,
         fastModel: config.GEMINI_MODEL_FAST,
         smartModel: config.GEMINI_MODEL_SMART,
         maxTokens: config.AI_MAX_TOKENS_CLASSIFICATION,
@@ -153,9 +170,9 @@ async function main(): Promise<void> {
   }
 
   const rows = results
-    .map((r) => (r.status === 'skipped'
-      ? `| ${r.name} | skipped | ${r.detail} |`
-      : `| ${r.name} | ${r.total} | ${r.truePositive} | ${r.falsePositive} | ${r.falseNegative} | ${r.trueNegative} | ${pct(r.precision ?? 0)} | ${pct(r.recall ?? 0)} | ${r.usage} |`))
+    .map((r) => (r.status === 'measured'
+      ? `| ${r.name} | ${r.total} | ${r.truePositive} | ${r.falsePositive} | ${r.falseNegative} | ${r.trueNegative} | ${pct(r.precision ?? 0)} | ${pct(r.recall ?? 0)} | ${r.usage} |`
+      : `| ${r.name} | ${r.status} | ${r.detail} |`))
     .join('\n');
 
   const report = [

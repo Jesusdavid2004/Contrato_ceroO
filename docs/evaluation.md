@@ -1,6 +1,6 @@
 # High-risk classification evaluation
 
-**Generated:** 2026-11-03T13:35:35.064Z
+**Generated:** 2026-11-03T15:16:48.371Z
 **Dataset:** 9 hand-labeled contract scenarios (Spanish and English, lease/service/employment); binary expected labels are for HIGH risk only.
 **RAG:** disabled for this run, so `legal_basis` is empty across providers.
 
@@ -9,6 +9,7 @@
 | fake (deterministic regex double) | 27 | 1 | 0 | 7 | 19 | 100.0% | 12.5% | inputTokens=0 outputTokens=0 |
 | local (on-device multilingual-e5 prototypes) | 27 | 5 | 5 | 3 | 14 | 50.0% | 62.5% | inputTokens=519 outputTokens=0 |
 | anthropic (hosted Claude, tool use + Zod) | skipped | ANTHROPIC_API_KEY is not set; no external call was made. |
+| gemini (hosted Gemini, JSON mode + Zod) | 27 | 6 | 0 | 2 | 19 | 100.0% | 75.0% | inputTokens=4095 outputTokens=3394 |
 
 ## Interpretation and limitations
 

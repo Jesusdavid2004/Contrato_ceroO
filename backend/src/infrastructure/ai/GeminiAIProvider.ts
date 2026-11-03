@@ -208,6 +208,7 @@ export class GeminiAIProvider implements AIProvider {
     systemPrompt: string,
     userPrompt: string,
     responseSchema?: unknown,
+    retried = false,
   ): Promise<{ text: string; json: unknown; usage: GeminiUsage }> {
     const body: Record<string, unknown> = {
       system_instruction: { parts: [{ text: systemPrompt }] },
@@ -233,6 +234,11 @@ export class GeminiAIProvider implements AIProvider {
           signal: AbortSignal.timeout(this.options.timeoutMs),
         },
       );
+      // Free-tier spikes: single backoff retry on rate limits/overload.
+      if ((res.status === 429 || res.status === 503) && !retried) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+        return this.generateContent(model, systemPrompt, userPrompt, responseSchema, true);
+      }
     } catch (error) {
       logger.error('Gemini request failed', {
         errorName: error instanceof Error ? error.name : 'UnknownError',
