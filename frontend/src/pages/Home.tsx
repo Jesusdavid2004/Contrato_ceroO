@@ -1,20 +1,25 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { UploadCloud, FileText, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
+import { FileSearch, Sparkles, PenLine } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { ContractApiError, uploadAndAnalyzeContract } from '../services/contracts';
 import { preHashFile } from '../lib/fileHash';
+import { FileDropzone } from '../components/FileDropzone';
+
+const MODULES = [
+  { icon: FileSearch, titleKey: 'features.scan.title', descKey: 'features.scan.desc' },
+  { icon: Sparkles, titleKey: 'features.analyze.title', descKey: 'features.analyze.desc' },
+  { icon: PenLine, titleKey: 'features.protect.title', descKey: 'features.protect.desc' },
+];
 
 export function Home() {
   const { t, i18n } = useTranslation();
-  const { token } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isDragging, setIsDragging] = useState(false);
+  const { token, user } = useAuth();
+  const navigate = useNavigate();
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const navigate = useNavigate();
 
   const uploadFile = async (file: File) => {
     setIsUploading(true);
@@ -34,87 +39,55 @@ export function Home() {
     }
   };
 
+  const firstName = user?.name.split(' ')[0];
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80vh] text-center space-y-12">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-3xl space-y-6"
-      >
-        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400">
-          {t('home.title', 'Fair Contracts, Clear Conditions')}
+    <div className="space-y-6">
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        {firstName && (
+          <p className="text-[14px] font-medium text-[var(--color-text-muted)]">
+            {t('home.greeting', { name: firstName, defaultValue: `Hello, ${firstName}` })}
+          </p>
+        )}
+        <h1 className="mt-1 text-[30px] font-bold leading-tight tracking-tight sm:text-[36px]">
+          {t('home.headline', 'Analyze your contracts')}
         </h1>
-        <p className="text-xl text-slate-600 dark:text-slate-400">
-          {t('home.subtitle', 'Detect abusive clauses instantly with AI and generate formal objection letters in seconds.')}
+        <p className="mt-2 max-w-xl text-[15px] leading-relaxed text-[var(--color-text-muted)]">
+          {t('home.subtitle', 'Identify risks, understand your clauses and make informed decisions.')}
         </p>
       </motion.div>
 
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        onClick={() => !isUploading && fileInputRef.current?.click()}
-        onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-        onDragLeave={() => setIsDragging(false)}
-        onDrop={(e) => {
-          e.preventDefault();
-          setIsDragging(false);
-          if (e.dataTransfer.files?.[0]) uploadFile(e.dataTransfer.files[0]);
-        }}
-        className={`w-full max-w-2xl glass rounded-3xl p-12 border-2 border-dashed transition-all cursor-pointer relative overflow-hidden
-          ${isDragging ? 'border-blue-500 scale-105' : 'border-blue-300 dark:border-blue-700/50 hover:border-blue-500'}
-          ${isUploading ? 'opacity-70 pointer-events-none' : ''}
-        `}
-      >
-        <input
-          type="file"
-          className="hidden"
-          ref={fileInputRef}
-          onChange={e => e.target.files?.[0] && uploadFile(e.target.files[0])}
-          accept=".pdf,image/png,image/jpeg,image/webp,image/tiff,image/bmp,image/gif,.tiff,.tif,.webp,.bmp"
-        />
-        <div className="relative z-10 flex flex-col items-center space-y-4">
-          <div className="p-4 bg-blue-100 dark:bg-blue-900/40 rounded-full text-blue-600 dark:text-blue-400">
-            {isUploading ? <Loader2 className="h-10 w-10 animate-spin" /> : <UploadCloud className="h-10 w-10" />}
-          </div>
-          <h3 className="text-2xl font-semibold">
-            {isUploading ? t('contract.analyzing', 'Analyzing contract...') : t('contract.upload_cta', 'Upload contract')}
-          </h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t('contract.upload_hint', 'PDF or Images (PNG, JPG, WebP, TIFF, BMP - max 10MB)')}
-          </p>
-        </div>
-      </motion.div>
-
-      {uploadError && (
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="text-red-500 text-sm"
-        >
-          {uploadError}
-        </motion.p>
-      )}
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-5xl"
+        transition={{ duration: 0.3, delay: 0.08 }}
+        className="floating-panel !p-4 sm:!p-5"
       >
-        {[
-          { icon: FileText, title: t('features.scan.title', 'Instant Scan'), desc: t('features.scan.desc', 'Extracts text from PDFs and images automatically.') },
-          { icon: AlertTriangle, title: t('features.analyze.title', 'AI Analysis'), desc: t('features.analyze.desc', 'Highlights risky clauses with plain-language explanations.') },
-          { icon: CheckCircle, title: t('features.protect.title', 'Take Action'), desc: t('features.protect.desc', 'Generates a formal objection letter ready to send.') },
-        ].map((feature, i) => (
-          <div key={i} className="glass p-6 rounded-2xl flex flex-col items-center space-y-3 text-center">
-            <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-blue-600 dark:text-blue-400">
-              <feature.icon className="h-6 w-6" />
-            </div>
-            <h4 className="font-semibold text-lg">{feature.title}</h4>
-            <p className="text-sm text-slate-600 dark:text-slate-400">{feature.desc}</p>
-          </div>
-        ))}
+        <FileDropzone isUploading={isUploading} onFile={(f) => void uploadFile(f)} />
+        {uploadError && (
+          <p role="alert" className="px-2 pb-1 pt-3 text-[13px] font-medium text-red-500">
+            {uploadError}
+          </p>
+        )}
       </motion.div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        {MODULES.map(({ icon: Icon, titleKey, descKey }, i) => (
+          <motion.div
+            key={titleKey}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.12 + i * 0.06 }}
+            className="floating-card"
+          >
+            <span className="inline-flex rounded-[13px] bg-[var(--color-action-soft)] p-2.5">
+              <Icon aria-hidden="true" className="h-5 w-5 text-[var(--color-action)]" />
+            </span>
+            <h2 className="mt-3 text-[15px] font-bold">{t(titleKey)}</h2>
+            <p className="mt-1 text-[13px] leading-relaxed text-[var(--color-text-muted)]">{t(descKey)}</p>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 }

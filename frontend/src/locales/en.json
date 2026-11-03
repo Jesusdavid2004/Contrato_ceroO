@@ -38,6 +38,8 @@
   "auth.no_account": "Don't have an account?",
   "auth.have_account": "Already have an account?",
   "home.title": "Fair Contracts, Clear Conditions",
+  "home.greeting": "Hello, {{name}}",
+  "home.headline": "Analyze your contracts",
   "home.subtitle": "Detect abusive clauses instantly with AI and generate formal objection letters in seconds.",
   "features.scan.title": "Instant Scan",
   "features.scan.desc": "Extracts text from PDFs and images automatically.",
