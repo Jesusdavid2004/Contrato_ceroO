@@ -30,6 +30,8 @@ export class PostgresLegalContextProvider implements LegalContextProvider {
         sourceUrl: provision.sourceUrl,
         reference: provision.reference,
         text: provision.text,
+        tema: provision.tema,
+        fuenteVerificadaEn: provision.fuenteVerificadaEn,
       }));
     }));
     return provisionsByClause.flat();

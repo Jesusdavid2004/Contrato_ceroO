@@ -7,6 +7,12 @@ export interface LegalProvisionProps {
   text: string;
   embedding?: number[];
   createdAt?: Date;
+  /** Curated legal domain, e.g. 'arriendo', 'consumo', 'laboral'. */
+  tema?: string;
+  /** ISO date (YYYY-MM-DD) of the norm the text was taken from. */
+  vigenciaDesde?: string;
+  /** ISO date (YYYY-MM-DD) when the source URL was last checked. */
+  fuenteVerificadaEn?: string;
 }
 
 export class LegalProvision {
@@ -18,6 +24,9 @@ export class LegalProvision {
   public readonly text: string;
   public readonly embedding?: number[];
   public readonly createdAt: Date;
+  public readonly tema: string;
+  public readonly vigenciaDesde?: string;
+  public readonly fuenteVerificadaEn?: string;
 
   constructor(props: LegalProvisionProps) {
     this.id = props.id;
@@ -28,6 +37,9 @@ export class LegalProvision {
     this.text = props.text;
     this.embedding = props.embedding;
     this.createdAt = props.createdAt || new Date();
+    this.tema = props.tema || 'general';
+    this.vigenciaDesde = props.vigenciaDesde;
+    this.fuenteVerificadaEn = props.fuenteVerificadaEn;
   }
 
   public toJSON() {

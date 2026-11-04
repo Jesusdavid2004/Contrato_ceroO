@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Clause } from '../../domain/entities/Clause';
+import { Clause, type LegalBasisReference } from '../../domain/entities/Clause';
 import type { ContractRepository } from '../../domain/repositories/ContractRepository';
 import type { AIUsageRepository } from '../../domain/repositories/AIUsageRepository';
 import {
@@ -129,7 +129,7 @@ export class AnalyzeContractUseCase {
             confidence: classification.confidence,
             plainExplanation: classification.plain_explanation,
             whyRisky: classification.why_risky,
-            legalBasis: classification.legal_basis,
+            legalBasis: this.enrichLegalBasis(legalContext, ids[index], classification.legal_basis),
             suggestedChange: classification.suggested_change,
           }));
         }
@@ -143,6 +143,33 @@ export class AnalyzeContractUseCase {
       await this.contractRepository.save(contract);
       throw error;
     }
+  }
+
+  /**
+   * Attaches canonical source URL and domain to each cited basis by joining
+   * it back against the retrieved legal context (same clause + reference,
+   * case-insensitive). Citations without a context match keep empty strings so
+   * the frontend never renders an unverifiable link.
+   */
+  private enrichLegalBasis(
+    legalContext: LegalContextProvision[] | undefined,
+    clauseId: string,
+    legalBasis: Array<{ reference: string; summary: string }>,
+  ): LegalBasisReference[] {
+    const normalize = (value: string) => value.trim().toLowerCase();
+    return legalBasis.map((basis) => {
+      const match = legalContext?.find(
+        (provision) => provision.clauseId === clauseId
+          && normalize(provision.reference) === normalize(basis.reference),
+      );
+      return {
+        reference: basis.reference,
+        summary: basis.summary,
+        sourceUrl: match?.sourceUrl ?? '',
+        tema: match?.tema ?? '',
+        fuenteVerificadaEn: match?.fuenteVerificadaEn,
+      };
+    });
   }
 
   private async classifyWithUsage(

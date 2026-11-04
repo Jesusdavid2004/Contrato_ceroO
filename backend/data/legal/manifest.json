@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "files": [
+    {
+      "file": "CO-ARRIENDO.json",
+      "tema": "arriendo"
+    },
+    {
+      "file": "CO-CONSUMO.json",
+      "tema": "consumo"
+    }
+  ]
+}

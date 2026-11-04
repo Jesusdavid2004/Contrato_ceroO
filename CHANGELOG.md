@@ -4,6 +4,20 @@ Notable changes to ContratoClaro are documented here.
 
 ## [Unreleased]
 
+### Added
+
+- Verified citation corpus: versioned multi-file legal corpus (`manifest.json`
+  + `CO-ARRIENDO.json`/`CO-CONSUMO.json`, 20 provisions) with `sourceUrl`,
+  `tema`, `vigenciaDesde`, `fuenteVerificadaEn`; strict loader, coverage report,
+  and end-to-end grounding (DB → RAG → prompt → UI). Citations without a corpus
+  match render with empty link so nothing unverifiable reaches the user.
+- Citation evaluation: `expectedReferences` per evaluation clause plus citation
+  precision/recall in `npm run evaluate` and `docs/evaluation.md` (Gemini
+  100%/80% with 0 hallucinated on the current fixture set).
+- Frontend legal transparency: `ClauseCard` renders references as external links
+  with tema badge and verification date, `Results` links to a new `/coverage`
+  page, Zod preserves the new citation fields, i18n keys added in both locales.
+
 ### Removed
 
 - Anthropic adapter, SDK dependency, and related config/docs. The AI stack is

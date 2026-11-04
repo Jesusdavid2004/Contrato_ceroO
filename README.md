@@ -96,6 +96,8 @@ original contract file. See [the live demo script](./docs/demo-script.md).
 - Switch English/Spanish and light/dark themes (persisted, no flash on load).
 - Optional Colombian legal-context retrieval with pgvector; it is disabled by
   default and is not a substitute for checking official legal sources.
+  Verified citations link to official sources with tema badge and date; see
+  the in-app Coverage page (`/coverage`, 20 curated provisions).
 
 ## Architecture and Documentation
 

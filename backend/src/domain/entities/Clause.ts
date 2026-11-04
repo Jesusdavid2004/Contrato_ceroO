@@ -3,6 +3,12 @@ import type { RiskLevel } from '../value-objects/RiskLevel';
 export interface LegalBasisReference {
   reference: string;
   summary: string;
+  /** Canonical source URL, attached by joining against the retrieved legal context. Empty when RAG is off. */
+  sourceUrl?: string;
+  /** Curated legal domain (e.g. 'arriendo', 'consumo'). Empty when RAG is off. */
+  tema?: string;
+  /** ISO date when the cited source was last verified. Empty when RAG is off. */
+  fuenteVerificadaEn?: string;
 }
 
 export interface ClauseProps {

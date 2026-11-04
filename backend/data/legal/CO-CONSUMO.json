@@ -1,0 +1,112 @@
+[
+  {
+    "id": "co-1480-art37-abusivas",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 37",
+    "text": "Se consideran abusivas las cláusulas que limiten los derechos del consumidor, trasladen responsabilidades al consumidor o permitan al productor modificar unilateralmente el contrato en su favor.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-1480-art42-ineficacia",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 42",
+    "text": "Las cláusulas abusivas en contratos con consumidores son ineficaces de pleno derecho y se tienen por no escritas, sin afectar la validez del resto del contrato.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-1480-art43-lista",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 43",
+    "text": "Es abusiva la cláusula que exima de responsabilidad al productor, le permita no reembolsar lo pagado o imponga al consumidor renuncias anticipadas a sus derechos legales.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-1480-art23-informacion",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 23",
+    "text": "El consumidor tiene derecho a recibir información clara, veraz y suficiente sobre precios, cargos adicionales y condiciones del contrato antes de obligarse.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-1480-art47-retracto",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 47",
+    "text": "En ventas con financiación o a distancia el consumidor puede ejercer el derecho de retracto dentro del término legal y recibir la devolución de lo pagado.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-1480-art11-garantia",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 11",
+    "text": "Todo bien o servicio tiene una garantía legal mínima a cargo del productor o proveedor, que no puede ser desconocida mediante cláusulas contractuales.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-1480-art3-derechos",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 (Estatuto del Consumidor)",
+    "sourceUrl": "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html",
+    "reference": "Ley 1480 de 2011, Art. 3",
+    "text": "Son derechos de los consumidores la protección contra cláusulas abusivas, la libertad contractual sin coacción y la reclamación directa ante el productor o proveedor.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-law1480-art34",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 - Gestor Normativo de Función Pública",
+    "sourceUrl": "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=44306",
+    "reference": "Ley 1480 de 2011, artículo 34",
+    "text": "Las condiciones generales de contratos de consumo se interpretan de la manera más favorable al consumidor; ante una duda, prevalece la cláusula más favorable.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-law1480-art38",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 - Gestor Normativo de Función Pública",
+    "sourceUrl": "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=44306",
+    "reference": "Ley 1480 de 2011, artículo 38",
+    "text": "En contratos de adhesión con consumidores no se pueden incluir cláusulas que permitan al proveedor o productor modificar unilateralmente el contrato o sustraerse de sus obligaciones.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  },
+  {
+    "id": "co-law1480-art41",
+    "jurisdiction": "CO",
+    "sourceName": "Ley 1480 de 2011 - Gestor Normativo de Función Pública",
+    "sourceUrl": "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=44306",
+    "reference": "Ley 1480 de 2011, artículo 41",
+    "text": "En contratos de tracto sucesivo, la permanencia mínima requiere pacto expreso y una ventaja sustancial para el consumidor; el proveedor también debe ofrecer una alternativa sin permanencia mínima. La prórroga automática no puede mantener una penalidad de terminación después del período mínimo, salvo los supuestos legales de una nueva permanencia.",
+    "tema": "consumo",
+    "vigenciaDesde": "2011-10-12",
+    "fuenteVerificadaEn": "2026-11-03"
+  }
+]

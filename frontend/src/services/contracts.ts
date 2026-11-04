@@ -8,6 +8,9 @@ const riskLevelSchema = z.enum(['low', 'medium', 'high']);
 const legalBasisSchema = z.object({
   reference: z.string(),
   summary: z.string(),
+  sourceUrl: z.string().url().optional().or(z.literal('')),
+  tema: z.string().optional(),
+  fuenteVerificadaEn: z.string().optional(),
 });
 const clauseDtoSchema = z.object({
   id: z.string().min(1),

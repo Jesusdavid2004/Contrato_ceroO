@@ -184,6 +184,7 @@ describe('AnalyzeContractUseCase', () => {
         sourceUrl: 'https://example.gov.co/law',
         reference: 'Law 1, article 2',
         text: 'A consumer clause must be clear.',
+        tema: 'consumo',
       })),
     };
     const useCase = new AnalyzeContractUseCase(
@@ -335,6 +336,7 @@ describe('GeminiAIProvider', () => {
           sourceUrl: 'https://example.gov.co/law',
           reference: 'Article 15',
           text: 'Context for clause one.',
+          tema: 'consumo',
         },
         {
           clauseId: 'clause-2',
@@ -342,6 +344,7 @@ describe('GeminiAIProvider', () => {
           sourceUrl: 'https://example.gov.co/law',
           reference: 'Article 99',
           text: 'Context for clause two.',
+          tema: 'consumo',
         },
       ],
     });

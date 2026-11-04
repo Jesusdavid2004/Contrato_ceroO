@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowLeft, Copy, Download, FileDown, Info, Save } from 'lucide-react';
@@ -207,6 +207,13 @@ export function Results() {
       <p className="flex items-start gap-2 rounded-[16px] border border-[var(--color-border)] bg-[var(--color-surface)] p-4 text-[13px] leading-relaxed text-[var(--color-text-muted)]">
         <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
         {t('results.disclaimer')}
+      </p>
+
+      <p className="text-[13px] leading-relaxed text-[var(--color-text-muted)]">
+        {t('results.verified_footer')}{' '}
+        <Link to="/coverage" className="font-semibold text-[var(--color-action-text)] underline underline-offset-2">
+          {t('results.verified_footer_link')}
+        </Link>
       </p>
 
       <section aria-label={t('results.clauses')} className="grid items-start gap-4 xl:grid-cols-2">

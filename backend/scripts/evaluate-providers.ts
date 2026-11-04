@@ -4,13 +4,16 @@ import { FakeAIProvider } from '../src/infrastructure/ai/FakeAIProvider';
 import { LocalAIProvider } from '../src/infrastructure/ai/LocalAIProvider';
 import { GeminiAIProvider } from '../src/infrastructure/ai/GeminiAIProvider';
 import { HuggingFaceLocalEmbeddingProvider } from '../src/infrastructure/ai/HuggingFaceLocalEmbeddingProvider';
+import { loadLegalCorpus, type LoadedCorpusItem } from '../src/infrastructure/legal/corpusLoader';
 import type { AIProvider } from '../src/domain/services/AIProvider';
+import type { LegalContextProvision } from '../src/domain/services/LegalContextProvider';
 import { config } from '../src/shared/config';
 
 interface EvaluationClause {
   id: string;
   text: string;
   expectedHighRisk: boolean;
+  expectedReferences?: string[];
 }
 
 interface EvaluationContract {
@@ -32,29 +35,83 @@ interface ProviderResult {
   trueNegative?: number;
   precision?: number;
   recall?: number;
+  citationPrecision?: number;
+  citationRecall?: number;
+  expectedCitations?: number;
+  matchedCitations?: number;
+  predictedCitations?: number;
+  hallucinatedCitations?: number;
   usage?: string;
 }
 
 const DATASET_PATH = resolve(__dirname, '../../../evaluation/contracts.json');
 const REPORT_PATH = resolve(__dirname, '../../../docs/evaluation.md');
+const CORPUS_DIR = resolve(process.cwd(), 'data/legal');
 
 function pct(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-async function measure(name: string, provider: AIProvider, contracts: EvaluationContract[]): Promise<ProviderResult> {
+function normalizeReference(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function temaForContract(contractType: string): string | null {
+  if (contractType === 'LEASE') return 'arriendo';
+  if (contractType === 'SERVICE') return 'consumo';
+  return null;
+}
+
+function buildLegalContext(
+  contract: EvaluationContract,
+  corpusByTema: Map<string, LoadedCorpusItem[]>,
+): LegalContextProvision[] {
+  const tema = temaForContract(contract.contractType);
+  if (!tema) return [];
+  const items = corpusByTema.get(tema) ?? [];
+  const context: LegalContextProvision[] = [];
+  for (const clause of contract.clauses) {
+    for (const item of items) {
+      context.push({
+        clauseId: clause.id,
+        sourceName: item.sourceName,
+        sourceUrl: item.sourceUrl,
+        reference: item.reference,
+        text: item.text,
+        tema: item.tema,
+        fuenteVerificadaEn: item.fuenteVerificadaEn,
+      });
+    }
+  }
+  return context;
+}
+
+async function measure(
+  name: string,
+  provider: AIProvider,
+  contracts: EvaluationContract[],
+  corpusByTema: Map<string, LoadedCorpusItem[]>,
+): Promise<ProviderResult> {
   let truePositive = 0;
   let falsePositive = 0;
   let falseNegative = 0;
   let trueNegative = 0;
+  let predictedCitations = 0;
+  let groundedCitations = 0;
+  let expectedCitations = 0;
+  let matchedCitations = 0;
+  let hallucinatedCitations = 0;
   let inputTokens = 0;
   let outputTokens = 0;
   for (const contract of contracts) {
+    const legalContext = buildLegalContext(contract, corpusByTema);
+    const contextRefs = new Set(legalContext.map((p) => normalizeReference(p.reference)));
     const result = await provider.classifyClauses({
       contractType: contract.contractType,
       jurisdiction: contract.jurisdiction,
       locale: contract.locale,
       clauses: contract.clauses.map(({ id, text }) => ({ id, text })),
+      legalContext: legalContext.length > 0 ? legalContext : undefined,
     });
     inputTokens += result.usage.inputTokens;
     outputTokens += result.usage.outputTokens;
@@ -65,6 +122,20 @@ async function measure(name: string, provider: AIProvider, contracts: Evaluation
       else if (predictedHighRisk) falsePositive += 1;
       else if (clause.expectedHighRisk) falseNegative += 1;
       else trueNegative += 1;
+
+      const predicted = byId.get(clause.id)?.legal_basis ?? [];
+      const predictedNorm = predicted.map((b) => normalizeReference(b.reference));
+      const expectedNorm = (clause.expectedReferences ?? []).map(normalizeReference);
+      predictedCitations += predictedNorm.length;
+      for (const ref of predictedNorm) {
+        if (contextRefs.has(ref)) groundedCitations += 1;
+        else hallucinatedCitations += 1;
+      }
+      expectedCitations += expectedNorm.length;
+      const predictedSet = new Set(predictedNorm);
+      for (const ref of expectedNorm) {
+        if (predictedSet.has(ref)) matchedCitations += 1;
+      }
     }
   }
   const precisionDenominator = truePositive + falsePositive;
@@ -79,6 +150,12 @@ async function measure(name: string, provider: AIProvider, contracts: Evaluation
     trueNegative,
     precision: precisionDenominator ? truePositive / precisionDenominator : 0,
     recall: recallDenominator ? truePositive / recallDenominator : 0,
+    citationPrecision: predictedCitations ? groundedCitations / predictedCitations : 1,
+    citationRecall: expectedCitations ? matchedCitations / expectedCitations : 1,
+    expectedCitations,
+    matchedCitations,
+    predictedCitations,
+    hallucinatedCitations,
     usage: `inputTokens=${inputTokens} outputTokens=${outputTokens}`,
   };
 }
@@ -87,9 +164,10 @@ async function safeMeasure(
   name: string,
   build: () => Promise<AIProvider>,
   contracts: EvaluationContract[],
+  corpusByTema: Map<string, LoadedCorpusItem[]>,
 ): Promise<ProviderResult> {
   try {
-    return await measure(name, await build(), contracts);
+    return await measure(name, await build(), contracts, corpusByTema);
   } catch (error) {
     return {
       name,
@@ -105,8 +183,16 @@ async function main(): Promise<void> {
     throw new Error('The evaluation dataset must contain between 8 and 10 contracts.');
   }
 
+  const corpus = await loadLegalCorpus(CORPUS_DIR);
+  const corpusByTema = new Map<string, LoadedCorpusItem[]>();
+  for (const item of corpus) {
+    const group = corpusByTema.get(item.tema) ?? [];
+    group.push(item);
+    corpusByTema.set(item.tema, group);
+  }
+
   const results: ProviderResult[] = [];
-  results.push(await safeMeasure('fake (deterministic regex double)', async () => new FakeAIProvider(), dataset.contracts));
+  results.push(await safeMeasure('fake (deterministic regex double)', async () => new FakeAIProvider(), dataset.contracts, corpusByTema));
 
   try {
     await new HuggingFaceLocalEmbeddingProvider(
@@ -118,6 +204,7 @@ async function main(): Promise<void> {
         resolve(process.cwd(), config.EMBEDDING_CACHE_DIR),
       )),
       dataset.contracts,
+      corpusByTema,
     ));
   } catch (error) {
     results.push({
@@ -138,6 +225,7 @@ async function main(): Promise<void> {
         timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
       }),
       dataset.contracts,
+      corpusByTema,
     ));
   } else {
     results.push({
@@ -153,20 +241,34 @@ async function main(): Promise<void> {
       : `| ${r.name} | ${r.status} | ${r.detail} |`))
     .join('\n');
 
+  const citationRows = results
+    .map((r) => (r.status === 'measured'
+      ? `| ${r.name} | ${r.predictedCitations} | ${r.expectedCitations} | ${r.matchedCitations} | ${r.hallucinatedCitations} | ${pct(r.citationPrecision ?? 0)} | ${pct(r.citationRecall ?? 0)} |`
+      : `| ${r.name} | ${r.status} | ${r.detail} |`))
+    .join('\n');
+
   const report = [
     '# High-risk classification evaluation',
     '',
     `**Generated:** ${new Date().toISOString()}`,
-    '**Dataset:** 9 hand-labeled contract scenarios (Spanish and English, lease/service/employment); binary expected labels are for HIGH risk only.',
-    '**RAG:** disabled for this run, so `legal_basis` is empty across providers.',
+    '**Dataset:** 9 hand-labeled contract scenarios (Spanish and English, lease/service/employment); binary expected labels are for HIGH risk only, plus `expectedReferences` per clause for the citation metric.',
+    `**RAG:** enabled for this run via the versioned corpus in \`backend/data/legal\` (${corpus.length} provisions: arriendo=${corpusByTema.get('arriendo')?.length ?? 0}, consumo=${corpusByTema.get('consumo')?.length ?? 0}). LEASE clauses receive all arriendo provisions, SERVICE all consumo provisions, EMPLOYMENT none (no labor corpus yet).`,
     '',
     '| Provider | Clauses | TP | FP | FN | TN | HIGH precision | HIGH recall | Usage |',
     '|---|---|---:|---:|---:|---:|---:|---:|---|',
     rows,
     '',
+    '## Citation metric (grounded vs expected)',
+    '',
+    'Citation precision = cited references found verbatim in the supplied legal context / all cited references (anti-hallucination). Citation recall = expected references cited / all expected references in `evaluation/contracts.json`. Empty citation sets score precision 1 (nothing invented) and recall 0 when citations were expected.',
+    '',
+    '| Provider | Predicted | Expected | Matched | Hallucinated | Citation precision | Citation recall |',
+    '|---|---:|---:|---:|---:|---:|---:|',
+    citationRows,
+    '',
     '## Interpretation and limitations',
     '',
-    'Labels are illustrative judgments for a classroom demo, not legal review: an abusive paraphrase without the regex keywords counts as HIGH, and a proportionate capped penalty counts as LOW. The deterministic fake double is a Spanish-keyword baseline, so English traps and paraphrases are its known blind spots. The local neural provider uses a general-purpose multilingual embedding model, not a legal-tuned classifier. The hosted provider is only measured when a key is configured, and its numbers still depend on prompts, temperature defaults, and this tiny fixture set — never treat them as production quality or legal correctness.',
+    'Labels are illustrative judgments for a classroom demo, not legal review: an abusive paraphrase without the regex keywords counts as HIGH, and a proportionate capped penalty counts as LOW. The deterministic fake double is a Spanish-keyword baseline that never cites, so its citation recall is 0 by design. The local neural provider uses a general-purpose multilingual embedding model, not a legal-tuned classifier, and also returns no citations without RAG wiring. The hosted provider is only measured when a key is configured, and its numbers still depend on prompts, temperature defaults, and this tiny fixture set — never treat them as production quality or legal correctness.',
     '',
     'Run `npm run evaluate` from `backend/` to regenerate this report. Expand the reviewed fixture set with qualified legal-domain reviewers before using these metrics to make product or legal decisions.',
     '',

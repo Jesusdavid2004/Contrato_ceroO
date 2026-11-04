@@ -4,6 +4,8 @@ export interface LegalContextProvision {
   sourceUrl: string;
   reference: string;
   text: string;
+  tema: string;
+  fuenteVerificadaEn?: string;
 }
 
 export interface LegalContextProvider {

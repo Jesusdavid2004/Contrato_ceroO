@@ -34,11 +34,24 @@ On 27 hand-labeled clauses across 9 Spanish/English scenarios:
 |---|---|---|
 | Deterministic regex double | 100.0% | 12.5% |
 | Local neural (multilingual-e5 prototypes) | 50.0% | 62.5% |
+| Hosted Gemini (JSON mode + RAG corpus) | 100.0% | 75.0% |
+
+Citation grounding on 10 expected references (lease/service high-risk clauses;
+employment expects none until a labor corpus exists):
+
+| Provider | Citation precision | Citation recall | Hallucinated |
+|---|---|---|---|
+| Deterministic regex double | 100.0% | 0.0% | 0 |
+| Local neural | 100.0% | 0.0% | 0 |
+| Hosted Gemini | 100.0% | 80.0% | 0 |
 
 The regex baseline never cries wolf but misses English traps and paraphrases
-without its keywords (7 of 8 abusive clauses missed). The neural provider
-generalizes across languages and paraphrases at the cost of 5 false alarms —
-the classic precision/recall trade-off, measured rather than asserted.
+without its keywords (7 of 8 abusive clauses missed) and never cites by design.
+The neural provider generalizes across languages and paraphrases at the cost of
+5 false alarms — the classic precision/recall trade-off, measured rather than
+asserted. Gemini grounds every citation in the supplied corpus (0 hallucinated)
+and recovers 8 of 10 expected references; the 2 misses are paraphrase choices,
+not invented laws.
 
 ## Live-demo path
 Register → upload the lease PDF → watch the extraction/analysis stages →

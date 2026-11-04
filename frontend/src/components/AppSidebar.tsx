@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Home, History, Settings, ShieldCheck, LogOut } from 'lucide-react';
+import { Home, History, Settings, ShieldCheck, LogOut, BookOpen } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const LINKS = [
   { path: '/', labelKey: 'nav.home', icon: Home, end: true },
   { path: '/history', labelKey: 'nav.history', icon: History, end: false },
+  { path: '/coverage', labelKey: 'nav.coverage', icon: BookOpen, end: false },
   { path: '/settings', labelKey: 'nav.settings', icon: Settings, end: false },
 ];
 

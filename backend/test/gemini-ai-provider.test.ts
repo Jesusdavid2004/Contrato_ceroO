@@ -53,6 +53,7 @@ describe('GeminiAIProvider (hosted smart tier)', () => {
         sourceUrl: 'https://example.test/ley',
         reference: 'Ley 820 de 2003, Art. 20',
         text: 'Cap.',
+        tema: 'arriendo',
       }],
     });
     expect(result.clauses).toHaveLength(1);

@@ -21,7 +21,8 @@ export class PostgresLegalProvisionRepository implements LegalProvisionRepositor
     );
     const vector = this.toVector(queryEmbedding);
     const result = await this.pool.query(
-      `SELECT id, jurisdiction, source_name, source_url, reference, text, created_at
+      `SELECT id, jurisdiction, source_name, source_url, reference, text,
+              tema, vigencia_desde, fuente_verificada_en
        FROM legal_provisions
        WHERE jurisdiction = $1 AND embedding IS NOT NULL
        ORDER BY embedding <=> $2::vector
@@ -36,6 +37,9 @@ export class PostgresLegalProvisionRepository implements LegalProvisionRepositor
       sourceUrl: row.source_url || '',
       reference: row.reference,
       text: row.text,
+      tema: row.tema || 'general',
+      vigenciaDesde: row.vigencia_desde ? String(row.vigencia_desde).slice(0, 10) : undefined,
+      fuenteVerificadaEn: row.fuente_verificada_en ? String(row.fuente_verificada_en).slice(0, 10) : undefined,
       createdAt: new Date(row.created_at),
     }));
   }
@@ -52,15 +56,19 @@ export class PostgresLegalProvisionRepository implements LegalProvisionRepositor
         this.validateEmbedding(provision.embedding);
         await client.query(
           `INSERT INTO legal_provisions
-             (id, jurisdiction, source_name, source_url, reference, text, embedding)
-           VALUES ($1, $2, $3, $4, $5, $6, $7::vector)
+             (id, jurisdiction, source_name, source_url, reference, text, embedding,
+              tema, vigencia_desde, fuente_verificada_en)
+           VALUES ($1, $2, $3, $4, $5, $6, $7::vector, $8, $9, $10)
            ON CONFLICT (id) DO UPDATE SET
              jurisdiction = EXCLUDED.jurisdiction,
              source_name = EXCLUDED.source_name,
              source_url = EXCLUDED.source_url,
              reference = EXCLUDED.reference,
              text = EXCLUDED.text,
-             embedding = EXCLUDED.embedding`,
+             embedding = EXCLUDED.embedding,
+             tema = EXCLUDED.tema,
+             vigencia_desde = EXCLUDED.vigencia_desde,
+             fuente_verificada_en = EXCLUDED.fuente_verificada_en`,
           [
             provision.id,
             provision.jurisdiction,
@@ -69,6 +77,9 @@ export class PostgresLegalProvisionRepository implements LegalProvisionRepositor
             provision.reference,
             provision.text,
             this.toVector(provision.embedding),
+            provision.tema,
+            provision.vigenciaDesde || null,
+            provision.fuenteVerificadaEn || null,
           ],
         );
       }

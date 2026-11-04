@@ -71,10 +71,38 @@ export function ClauseCard({ clause, defaultOpen = false }: { clause: ContractCl
               {clause.legal_basis.length > 0 && (
                 <div>
                   <h3 className="text-[13px] font-bold">{t('results.legal_basis')}</h3>
-                  <ul className="mt-1 list-inside list-disc space-y-1 text-[14px]">
+                  <ul className="mt-1 space-y-2 text-[14px]">
                     {clause.legal_basis.map((basis) => (
-                      <li key={`${clause.id}-${basis.reference}`}>
-                        <strong>{basis.reference}:</strong> {basis.summary}
+                      <li key={`${clause.id}-${basis.reference}`} className="list-none rounded-[12px] border border-[var(--color-border)] p-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          {basis.sourceUrl ? (
+                            <a
+                              href={basis.sourceUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-bold text-[var(--color-action-text)] underline underline-offset-2"
+                            >
+                              {basis.reference}
+                            </a>
+                          ) : (
+                            <strong>{basis.reference}</strong>
+                          )}
+                          {basis.tema && (
+                            <span className="rounded-full bg-[var(--color-surface-2)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[var(--color-text-muted)]">
+                              {basis.tema}
+                            </span>
+                          )}
+                          {basis.fuenteVerificadaEn ? (
+                            <span className="text-[11px] text-[var(--color-text-muted)]">
+                              {t('results.verified', { date: basis.fuenteVerificadaEn })}
+                            </span>
+                          ) : (
+                            <span className="text-[11px] text-[var(--color-text-muted)]">
+                              {t('results.unverified')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 leading-relaxed">{basis.summary}</p>
                       </li>
                     ))}
                   </ul>

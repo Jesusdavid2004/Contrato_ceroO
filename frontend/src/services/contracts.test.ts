@@ -122,4 +122,38 @@ describe('legacy contract validators (characterization)', () => {
     expect(isRiskLevel('critical')).toBe(false);
     expect(isRiskLevel(undefined)).toBe(false);
   });
+
+  it('preserves verified citation fields (sourceUrl, tema, fecha)', () => {
+    const parsed = parseContract({
+      id: 'c1',
+      status: 'READY',
+      global_risk_score: 50,
+      clauses: [
+        {
+          id: 'cl1',
+          original_text: 'text',
+          risk_level: 'high',
+          plain_explanation: 'plain',
+          confidence: 0.9,
+          why_risky: 'why',
+          legal_basis: [
+            {
+              reference: 'Ley 820 de 2003, Art. 20',
+              summary: 'Tope IPC.',
+              sourceUrl: 'https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html',
+              tema: 'arriendo',
+              fuenteVerificadaEn: '2026-11-03',
+            },
+            { reference: 'Ley X', summary: 'Sin fuente.' },
+          ],
+          suggested_change: null,
+        },
+      ],
+    });
+    expect(parsed.clauses[0].legal_basis[0].sourceUrl).toBe(
+      'https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html',
+    );
+    expect(parsed.clauses[0].legal_basis[0].tema).toBe('arriendo');
+    expect(parsed.clauses[0].legal_basis[1].sourceUrl).toBeUndefined();
+  });
 });
