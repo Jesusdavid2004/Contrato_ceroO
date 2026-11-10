@@ -500,7 +500,33 @@ paths:
       security:
         - bearerAuth: []
       summary: Generate and persist an objection letter
-      description: Uses only medium/high-risk clauses. Returns 422 without an AI call if none are flagged.
+      description: >
+        Uses only medium/high-risk clauses by default, or an explicit finding
+        selection. Prioritizes clarification or adjustment requests; nothing is
+        sent automatically. Returns 422 without an AI call if none are flagged.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clause_ids:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 100
+                  description: Explicit finding selection; defaults to all flagged clauses.
+                recipient:
+                  type: string
+                  maxLength: 120
+                purpose:
+                  type: string
+                  enum: [clarification, adjustment, other]
+                tone:
+                  type: string
+                  enum: [respectful, formal, firm]
       responses:
         "201":
           description: Letter generated
@@ -824,6 +850,19 @@ components:
           type: string
         content:
           type: string
+        recipient:
+          type: [string, "null"]
+        purpose:
+          type: string
+          enum: [clarification, adjustment, other]
+        tone:
+          type: string
+          enum: [respectful, formal, firm]
+        selected_clause_ids:
+          type: array
+          items:
+            type: string
+          description: Explicit finding selection; empty means the default flagged set at generation time.
         created_at:
           type: string
           format: date-time

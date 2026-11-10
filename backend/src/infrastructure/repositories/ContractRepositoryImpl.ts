@@ -222,15 +222,26 @@ export class PostgresContractRepository implements ContractRepository {
 
   public async saveObjectionLetter(letter: ObjectionLetter): Promise<void> {
     await this.pool.query(
-      `INSERT INTO objection_letters (contract_id, locale, content, created_at)
-       VALUES ($1, $2, $3, $4)`,
-      [letter.contractId, letter.locale, letter.content, letter.createdAt],
+      `INSERT INTO objection_letters
+        (contract_id, locale, content, created_at, recipient, purpose, tone, selected_clause_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        letter.contractId,
+        letter.locale,
+        letter.content,
+        letter.createdAt,
+        letter.recipient,
+        letter.purpose,
+        letter.tone,
+        JSON.stringify(letter.selectedClauseIds),
+      ],
     );
   }
 
   public async getObjectionLetter(contractId: string): Promise<ObjectionLetter | null> {
     const res = await this.pool.query(
-      `SELECT id, contract_id, locale, content, created_at
+      `SELECT id, contract_id, locale, content, created_at,
+              recipient, purpose, tone, selected_clause_ids
        FROM objection_letters WHERE contract_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1`,
       [contractId],
     );
@@ -241,6 +252,10 @@ export class PostgresContractRepository implements ContractRepository {
       contractId: row.contract_id,
       locale: row.locale,
       content: row.content,
+      recipient: row.recipient,
+      purpose: row.purpose ?? 'clarification',
+      tone: row.tone ?? 'respectful',
+      selectedClauseIds: Array.isArray(row.selected_clause_ids) ? row.selected_clause_ids : [],
       createdAt: new Date(row.created_at),
     });
   }
@@ -302,6 +317,10 @@ export class InMemoryContractRepository implements ContractRepository {
         contractId: letter.contractId,
         locale: letter.locale,
         content: letter.content,
+        recipient: letter.recipient,
+        purpose: letter.purpose,
+        tone: letter.tone,
+        selectedClauseIds: letter.selectedClauseIds,
         createdAt: letter.createdAt,
       });
     this.letters.set(stored.contractId, stored);

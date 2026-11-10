@@ -32,7 +32,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema } from '../schemas/contractSchemas';
 import { validateBody } from '../middleware/validationMiddleware';
 
 export function createContractRouter(deps: {
@@ -357,9 +357,14 @@ export function createContractRouter(deps: {
     aiUserLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
+        const body = generateLetterBodySchema.parse(req.body || {});
         const letter = await deps.generateObjectionLetterUseCase.execute({
           contractId: String(req.params.id),
           userId: req.user!.id,
+          clauseIds: body.clause_ids,
+          recipient: body.recipient,
+          purpose: body.purpose,
+          tone: body.tone,
         });
         res.status(201).json(letter.toJSON());
       } catch (err) {

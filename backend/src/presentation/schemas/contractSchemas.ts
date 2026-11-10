@@ -64,6 +64,13 @@ export const updateLetterBodySchema = z.object({
     ),
 });
 
+export const generateLetterBodySchema = z.object({
+  clause_ids: z.array(z.string().min(1)).min(1).max(100).optional(),
+  recipient: z.string().trim().min(1).max(120).optional(),
+  purpose: z.enum(['clarification', 'adjustment', 'other']).optional(),
+  tone: z.enum(['respectful', 'formal', 'firm']).optional(),
+});
+
 export const contractIdParamSchema = z.object({
   id: z.string().min(1, 'Contract ID is required'),
 });

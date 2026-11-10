@@ -34,6 +34,10 @@ export class UpdateObjectionLetterUseCase {
       contractId: contract.id,
       locale: existingLetter.locale,
       content: input.content.trim(),
+      recipient: existingLetter.recipient,
+      purpose: existingLetter.purpose,
+      tone: existingLetter.tone,
+      selectedClauseIds: existingLetter.selectedClauseIds,
       createdAt: this.clock(),
     });
     await this.contractRepository.saveObjectionLetter(updatedLetter);
