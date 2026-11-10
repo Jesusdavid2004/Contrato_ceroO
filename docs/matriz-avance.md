@@ -46,7 +46,8 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 | Migraciones `...006`–`...012` ejecutadas en PG 15 local | Hecho | `217a323` | `postgres-roundtrip.test.ts` 6/6 real |
 | Bloqueo fuera de cobertura (sin IA/cuota, staging limpio, RAG omitido) | Hecho | `50a71c4` | `contract-coverage-gate.test.ts` 2/2; suite intacta |
 | `requires_review` separado de riesgo (umbral 0.6, migracion `...012`) | Hecho | `a52fde5` | evidencia extendida; roundtrip PG; OpenAPI |
-| Suite backend | Verde | — | 181/181 (+6 PG condicionales) |
+| RAG por tema curado (sin mapa no hay recuperacion) + corpus en dist | Hecho | `d6a7f6a` + `5a204b8` | `legal-validate.test.ts` + `legal-scope.test.ts`; CLI verificado |
+| Suite backend | Verde | — | 212/212 (+10 PG condicionales) |
 
 ## Backend — fase 6 (datos, propuestas, carta)
 
@@ -92,9 +93,8 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 - **Cola durable**: operando (leases, backoff, idempotencia, cancelación);
   sin apagón elegante aún (los leases vencen y se reclaman) y sin
   declaración de multi-instancia.
-- **Fase 5 restante**: filtro RAG por tema (hoy solo jurisdicción),
-  gestión reproducible de fuentes (CLI), OCR revisable con reanálisis,
-  análisis parcial por página, pagerender (`page_number` aún null).
+- **Fase 5 restante**: OCR revisable con reanálisis, análisis parcial por
+  página, pagerender (`page_number` aún null).
 - **UI pendiente**: mostrar `requires_review`, cobertura, datos, agenda,
   informe y revisión en el frontend (backend expone todo; locales listos).
 - **Fase 9 parcial**: regresión verde en ambos; falta E2E contra backend
