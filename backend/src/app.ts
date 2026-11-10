@@ -54,6 +54,8 @@ import { RealtimeServer } from './presentation/realtime/realtimeServer';
 import { registerRealtimeContext } from './presentation/realtime/realtimeContext';
 import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnalysisEventBus';
 import { PostgresFactsRepository, InMemoryFactsRepository } from './infrastructure/repositories/FactsRepositoryImpl';
+import { PostgresRemindersRepository, InMemoryRemindersRepository } from './infrastructure/repositories/RemindersRepositoryImpl';
+import { CreateReminderUseCase, CompleteReminderUseCase } from './application/use-cases/ReminderUseCases';
 import { PostgresProposalsRepository, InMemoryProposalsRepository } from './infrastructure/repositories/ProposalsRepositoryImpl';
 import { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from './application/use-cases/ProposalUseCases';
 import { CompareContractsUseCase } from './application/use-cases/CompareContractsUseCase';
@@ -97,6 +99,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
   const factsRepository = isInMemory ? new InMemoryFactsRepository() : new PostgresFactsRepository(pool);
+  const remindersRepository = isInMemory ? new InMemoryRemindersRepository() : new PostgresRemindersRepository(pool);
   const proposalsRepository = isInMemory ? new InMemoryProposalsRepository() : new PostgresProposalsRepository(pool);
   const fileStorage = new LocalFileStorage();
   const analysisStaging: AnalysisStaging = isInMemory
@@ -230,6 +233,8 @@ export function createApp(options?: { inMemory?: boolean }) {
   const createProposalUseCase = new CreateClauseProposalUseCase(contractRepository, proposalsRepository);
   const updateProposalUseCase = new UpdateClauseProposalUseCase(contractRepository, proposalsRepository);
   const compareContractsUseCase = new CompareContractsUseCase(contractRepository);
+  const createReminderUseCase = new CreateReminderUseCase(contractRepository, remindersRepository);
+  const completeReminderUseCase = new CompleteReminderUseCase(contractRepository, remindersRepository);
 
   // Health probe
   app.get(['/health', '/api/health'], (_req, res) => {
@@ -292,6 +297,9 @@ export function createApp(options?: { inMemory?: boolean }) {
     createProposalUseCase,
     updateProposalUseCase,
     compareContractsUseCase,
+    remindersRepository,
+    createReminderUseCase,
+    completeReminderUseCase,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,

@@ -618,6 +618,135 @@ paths:
           $ref: "#/components/responses/ValidationError"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /contracts/{id}/reminders:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: listReminders
+      security:
+        - bearerAuth: []
+      summary: List own reminders
+      responses:
+        "200":
+          description: Reminders of the contract
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Contracts]
+      operationId: createReminder
+      security:
+        - bearerAuth: []
+      summary: Create an internal reminder (idempotent)
+      description: Requires future due_at with offset and IANA timezone; duplicate pending returns 200 with the existing one. No external email or channels.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, due_at, timezone]
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                due_at:
+                  type: string
+                  format: date-time
+                timezone:
+                  type: string
+      responses:
+        "201":
+          description: Reminder created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "200":
+          description: Duplicate pending reminder returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/reminders/{reminderId}:
+    parameters:
+      - name: reminderId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [Contracts]
+      operationId: completeReminder
+      security:
+        - bearerAuth: []
+      summary: Complete a reminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [done]
+      responses:
+        "200":
+          description: Completed reminder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/reminders.ics:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: downloadRemindersIcs
+      security:
+        - bearerAuth: []
+      summary: Download reminders as .ics (no external accounts)
+      responses:
+        "200":
+          description: Calendar file with explicit timezones
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"
@@ -965,6 +1094,31 @@ components:
           description: Accepting keeps the proposal in the user draft; it never changes the counterparty contract.
         version:
           type: integer
+        created_at:
+          type: string
+          format: date-time
+    Reminder:
+      type: object
+      required: [id, contract_id, user_id, title, due_at, timezone, status, created_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        user_id:
+          type: string
+        title:
+          type: string
+        due_at:
+          type: string
+          format: date-time
+          description: Unambiguous instant; naive datetimes are rejected.
+        timezone:
+          type: string
+          example: America/Bogota
+        status:
+          type: string
+          enum: [pending, done]
         created_at:
           type: string
           format: date-time

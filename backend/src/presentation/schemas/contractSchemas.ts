@@ -83,5 +83,26 @@ export const askQuestionBodySchema = z.object({
   question: z.string().trim().min(1).max(500),
 });
 
+const ambiguousDateMessage = 'Due date must include a timezone offset or Z.';
+
+export const createReminderBodySchema = z.object({
+  title: z.string().trim().min(1).max(200),
+  due_at: z.string().datetime({ offset: true, message: ambiguousDateMessage }),
+  timezone: z.string().min(1).max(64).refine(
+    (zone) => {
+      try {
+        return Intl.supportedValuesOf('timeZone').includes(zone);
+      } catch {
+        return false;
+      }
+    },
+    { message: 'Unknown IANA timezone.' },
+  ),
+});
+
+export const completeReminderBodySchema = z.object({
+  status: z.literal('done'),
+});
+
 export type UploadContractBodyDTO = z.infer<typeof uploadContractBodySchema>;
 export type UpdateLetterBodyDTO = z.infer<typeof updateLetterBodySchema>;

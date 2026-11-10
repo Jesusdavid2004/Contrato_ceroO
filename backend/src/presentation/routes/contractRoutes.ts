@@ -22,6 +22,7 @@ import type { AnalysisEventPublisher } from '../../domain/services/AnalysisEvent
 import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
 import { stagingUriFor } from '../../domain/services/AnalysisStaging';
 import type { FactsRepository } from '../../domain/repositories/FactsRepository';
+import type { RemindersRepository } from '../../domain/repositories/RemindersRepository';
 import type { ProposalsRepository } from '../../domain/repositories/ProposalsRepository';
 import type { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from '../../application/use-cases/ProposalUseCases';
 import { config } from '../../shared/config';
@@ -32,9 +33,11 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema, askQuestionBodySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema, askQuestionBodySchema, createReminderBodySchema, completeReminderBodySchema } from '../schemas/contractSchemas';
 import { answerContractQuestion } from '../../domain/services/ContractQuestions';
 import type { CompareContractsUseCase } from '../../application/use-cases/CompareContractsUseCase';
+import type { CreateReminderUseCase, CompleteReminderUseCase } from '../../application/use-cases/ReminderUseCases';
+import { buildIcsCalendar } from '../../domain/services/CalendarExport';
 import { validateBody } from '../middleware/validationMiddleware';
 
 export function createContractRouter(deps: {
@@ -49,6 +52,9 @@ export function createContractRouter(deps: {
   createProposalUseCase?: CreateClauseProposalUseCase;
   updateProposalUseCase?: UpdateClauseProposalUseCase;
   compareContractsUseCase?: CompareContractsUseCase;
+  remindersRepository?: RemindersRepository;
+  createReminderUseCase?: CreateReminderUseCase;
+  completeReminderUseCase?: CompleteReminderUseCase;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -403,6 +409,92 @@ export function createContractRouter(deps: {
       }
     },
   );
+
+  // POST /:id/reminders (Internal reminder with explicit timezone)
+  router.post(
+    '/:id/reminders',
+    requireAuth,
+    validateBody(createReminderBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.createReminderUseCase) {
+          throw new Error('Reminders are not wired in this router.');
+        }
+        const { reminder, created } = await deps.createReminderUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+          title: req.body.title,
+          dueAt: new Date(req.body.due_at),
+          timezone: req.body.timezone,
+        });
+        res.status(created ? 201 : 200).json(reminder.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/reminders (List own reminders)
+  router.get('/:id/reminders', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const reminders = await deps.remindersRepository?.listByContract(contractId) ?? [];
+      res.status(200).json(reminders.map((reminder) => reminder.toJSON()));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /reminders/:reminderId (Complete a reminder)
+  router.put(
+    '/reminders/:reminderId',
+    requireAuth,
+    validateBody(completeReminderBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.completeReminderUseCase) {
+          throw new Error('Reminders are not wired in this router.');
+        }
+        const reminder = await deps.completeReminderUseCase.execute({
+          reminderId: String(req.params.reminderId),
+          userId: req.user!.id,
+        });
+        res.status(200).json(reminder.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/reminders.ics (Download calendar file, no external accounts)
+  router.get('/:id/reminders.ics', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const reminders = await deps.remindersRepository?.listByContract(contractId) ?? [];
+      const filename = `reminders-${contractId.slice(0, 40).replace(/[^a-zA-Z0-9_-]+/g, '-')}.ics`;
+      res
+        .status(200)
+        .type('text/calendar')
+        .attachment(filename)
+        .send(buildIcsCalendar(reminders));
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // DELETE /:id (Delete contract with ownership check)
   router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
