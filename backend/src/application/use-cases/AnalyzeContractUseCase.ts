@@ -111,8 +111,12 @@ export class AnalyzeContractUseCase {
         const ids = batch.map(() => `clause-${randomUUID()}`);
         const clauseInputs = batch.map((clause, index) => ({ id: ids[index], text: clause.text }));
         // Sin cobertura el analisis ya fallo arriba: aqui siempre hay alcance.
+        // El scope limita por tema curado (arriendo/consumo); sin mapa no hay
+        // recuperacion en vez de normas parecidas de otro ambito.
         const legalContext = this.legalContextProvider
-          ? await this.legalContextProvider.retrieve(contract.jurisdiction, clauseInputs)
+          ? await this.legalContextProvider.retrieve(contract.jurisdiction, clauseInputs, {
+            contractType: contract.contractType,
+          })
           : undefined;
         const cacheKey = this.createCacheKey(
           contract,
