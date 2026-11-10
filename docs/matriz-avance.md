@@ -67,6 +67,16 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 | Preguntas con citas, sin LLM ni persistencia | Hecho | `0e6f04c` | `contract-questions.test.ts` 3/3; OpenAPI 19 paths |
 | Suite backend | Verde | — | 199/199 (+9 PG condicionales) |
 
+## Backend — fase 8 (agenda, informe, revision)
+
+| Requisito | Estado | Commit | Prueba |
+|---|---|---|---|
+| Recordatorios idempotentes + `.ics` con zona explicita | Hecho | `0410897` + `917cff5` | `reminders.test.ts` + `reminders-api.test.ts` 5/5 |
+| Expediente PDF (contexto, hallazgos, datos, propuestas, fuentes) | Hecho | `886a63a` | `report-review.test.ts` (texto extraido del PDF) |
+| Revision pendiente/en/revisada sin pericia simulada | Hecho | `886a63a` | `report-review.test.ts`; migracion `...015` en PG real |
+| Migraciones `...014/015` en PG + roundtrip extendido | Hecho | este ciclo | PG 10/10 |
+| Suite backend | Verde | — | 206/206 (+10 PG condicionales) |
+
 ## Frontend (Contrato_cero_fronent, rama feat/realtime-client)
 
 | Requisito | Estado | Commit | Prueba |
@@ -85,10 +95,8 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 - **Fase 5 restante**: filtro RAG por tema (hoy solo jurisdicción),
   gestión reproducible de fuentes (CLI), OCR revisable con reanálisis,
   análisis parcial por página, pagerender (`page_number` aún null).
-- **UI pendiente**: mostrar `requires_review`, cobertura y datos en el
-  frontend (backend expone todo; locales listos).
-- **Fases 7 parcial / 8 sin empezar**: diff y preguntas con citas hechos;
-  faltan agenda `.ics`, informe PDF, revisión humana.
+- **UI pendiente**: mostrar `requires_review`, cobertura, datos, agenda,
+  informe y revisión en el frontend (backend expone todo; locales listos).
 - **Fase 9 parcial**: regresión verde en ambos; falta E2E contra backend
   real, a11y manual y switch Railway (requiere autorización).
 - Push a `origin` no realizado (decisión: solo commits locales).
