@@ -29,6 +29,15 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 | Staging cifrado con TTL (AES-GCM, purga, llave por env) | Hecho | `beb8bab` | `analysis-staging.test.ts` 5/5 |
 | Staging en subida/worker/borrado + `errors.staging_expired` | Hecho | `243a48c` + frontend `01dd4d0` | `analysis-staging-wiring.test.ts` 3/3 |
 
+## Backend — fase 5 (cobertura conductual y revision)
+
+| Requisito | Estado | Commit | Prueba |
+|---|---|---|---|
+| Migraciones `...006`–`...012` ejecutadas en PG 15 local | Hecho | `217a323` + este ciclo | `postgres-roundtrip.test.ts` 6/6 real |
+| Bloqueo fuera de cobertura (sin IA/cuota, staging limpio, RAG omitido) | Hecho | `50a71c4` | `contract-coverage-gate.test.ts` 2/2; suite intacta |
+| `requires_review` separado de riesgo (umbral 0.6, migracion `...012`) | Hecho | `a52fde5` | evidencia extendida; roundtrip PG; OpenAPI |
+| Suite backend | Verde | — | 181/181 (+6 PG condicionales) |
+
 ## Backend — fase 6 (datos, propuestas, carta)
 
 | Requisito | Estado | Commit | Prueba |
@@ -49,15 +58,15 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 
 ## Pendientes honestos
 
-- **Bloqueo de entorno**: migraciones `...006` a `...011` no ejecutadas
-  contra Postgres real (sin DB local); `migrate:up` + roundtrips pendientes.
-- **Comportamiento fuera de cobertura**: registrado pero sin bifurcar el
-  analisis a lectura limitada.
-- **Extraccion por pagina**: `page_number` siempre null; pagerender pendiente.
+- **PG verificado**: migraciones `...006`–`...012` aplicadas y roundtrips
+  6/6 en PG 15 local (volumen preservado, servicios detenidos).
+- **Fase 5 restante**: filtro RAG por tema (hoy solo jurisdicción),
+  gestión reproducible de fuentes (CLI), OCR revisable con reanálisis,
+  análisis parcial por página, pagerender (`page_number` aún null).
 - **Cola duradera de jobs**: solo outbox de eventos; trabajos en PG con
-  leases pendientes (staging ya deja bytes disponibles).
-- **Fase 5 restante**: RAG filtrado por scope, gestion de fuentes,
-  "requiere revisión", OCR revisable, analisis parcial por pagina.
+  leases pendientes (staging deja bytes disponibles).
+- **UI pendiente**: mostrar `requires_review`, cobertura y datos en el
+  frontend (backend expone todo; locales listos).
 - **Fases 7-8 sin empezar**: chat con citas, diff, agenda `.ics`,
   informe PDF, revisión humana.
 - **Fase 9 parcial**: regresión verde en ambos; falta E2E contra backend
