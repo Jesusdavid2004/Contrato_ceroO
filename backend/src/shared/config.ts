@@ -33,6 +33,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
   GRPC_INTERNAL_TOKEN: z.string().default('dev-internal-token'),
   GRPC_PORT: z.coerce.number().int().positive().default(50051),
+  STAGING_KEY: z.string().optional(),
+  STAGING_DIR: z.string().default('storage/staging'),
+  STAGING_TTL_MS: z.coerce.number().int().positive().default(6 * 60 * 60 * 1000),
   AI_PROVIDER: z.enum(['gemini', 'local', 'fake']).optional(),
   ANALYSIS_JOB_TIMEOUT_MS: z.coerce.number().int().positive().default(10 * 60 * 1000),
   SEED_DEMO: z
@@ -77,6 +80,13 @@ const envSchema = z.object({
       code: 'custom',
       path: ['AI_PROVIDER'],
       message: 'The deterministic fake provider is a test double and must never run in production. Use gemini or local.',
+    });
+  }
+  if (!process.env.STAGING_KEY) {
+    context.addIssue({
+      code: 'custom',
+      path: ['STAGING_KEY'],
+      message: 'STAGING_KEY (base64 of 32 random bytes) is required in production for encrypted analysis staging.',
     });
   }
 });
