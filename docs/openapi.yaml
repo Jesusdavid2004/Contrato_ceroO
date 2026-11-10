@@ -16,6 +16,8 @@ tags:
     description: User registration and session management
   - name: Contracts
     description: Contract uploads, analysis results, and objection letters
+  - name: Realtime
+    description: Single-use tickets for the analysis progress WebSocket (see docs/websocket-protocol.md)
 paths:
   /auth/register:
     post:
@@ -284,6 +286,36 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /realtime/ticket:
+    post:
+      tags: [Realtime]
+      operationId: createRealtimeTicket
+      security:
+        - bearerAuth: []
+      summary: Issue a single-use ticket for the progress WebSocket
+      description: >
+        Returns a random single-use ticket (TTL 60 s) bound to the caller.
+        Connect to /api/realtime?ticket=<ticket>. Access tokens must never be
+        placed in the WebSocket URL. See docs/websocket-protocol.md.
+      responses:
+        "201":
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket, expiresAt]
+                properties:
+                  ticket:
+                    type: string
+                    description: Opaque single-use ticket for the WS upgrade
+                  expiresAt:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"
