@@ -11,6 +11,8 @@ import type { GenerateObjectionLetterUseCase } from '../../application/use-cases
 import type { DownloadObjectionLetterPdfUseCase } from '../../application/use-cases/DownloadObjectionLetterPdfUseCase';
 import type { UpdateObjectionLetterUseCase } from '../../application/use-cases/UpdateObjectionLetterUseCase';
 import type { FileStorage } from '../../domain/services/InfrastructureInterfaces';
+import type { AnalysisEventPublisher } from '../../domain/services/AnalysisEventPublisher';
+import { logger } from '../../shared/logger';
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -25,6 +27,7 @@ export function createContractRouter(deps: {
   contractRepository: ContractRepository;
   fileStorage?: FileStorage;
   analysisWorker?: InProcessAnalysisWorker;
+  eventPublisher?: AnalysisEventPublisher;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -59,6 +62,23 @@ export function createContractRouter(deps: {
           locale: validatedBody.locale,
           title: validatedBody.title,
         });
+        if (deps.eventPublisher) {
+          try {
+            await deps.eventPublisher.publish({
+              contractId: result.id,
+              userId: req.user!.id,
+              jobId: result.id,
+              type: 'stage',
+              payload: { status: 'UPLOADED' },
+              occurredAt: new Date(),
+            });
+          } catch (error) {
+            logger.error('Upload event publish failed', {
+              contractId: result.id,
+              errorName: error instanceof Error ? error.name : 'UnknownError',
+            });
+          }
+        }
         if (deps.analysisWorker) {
           const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
           deps.analysisWorker.enqueue({

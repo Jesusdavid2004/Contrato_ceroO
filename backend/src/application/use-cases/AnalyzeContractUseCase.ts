@@ -16,6 +16,10 @@ import type {
   ClauseSegmenter,
   TextExtractor,
 } from '../../domain/services/InfrastructureInterfaces';
+import type {
+  AnalysisEvent,
+  AnalysisEventPublisher,
+} from '../../domain/services/AnalysisEventPublisher';
 import { Contract } from '../../domain/entities/Contract';
 import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
@@ -40,6 +44,7 @@ export class AnalyzeContractUseCase {
     private readonly cache: AIClassificationCache,
     private readonly clock: () => Date = () => new Date(),
     private readonly legalContextProvider?: LegalContextProvider,
+    private readonly eventPublisher?: AnalysisEventPublisher,
   ) {}
 
   public async execute(input: AnalyzeContractInput): Promise<void> {
@@ -59,6 +64,13 @@ export class AnalyzeContractUseCase {
       if (!reserved) throw new DailyQuotaExceededError(config.DAILY_AI_QUOTA);
       contract.markAnalyzing();
       await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: contract.id,
+        userId: input.userId,
+        jobId: contract.id,
+        type: 'stage',
+        payload: { status: 'ANALYZING' },
+      });
 
       const text = await this.textExtractor.extractText(input.fileBuffer, input.mimeType);
       const segmented = await this.clauseSegmenter.segment(text);
@@ -138,10 +150,40 @@ export class AnalyzeContractUseCase {
       contract.setClauses(clauses);
       contract.markReady();
       await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: contract.id,
+        userId: input.userId,
+        jobId: contract.id,
+        type: 'completed',
+        payload: { status: 'READY', globalRiskScore: contract.globalRiskScore },
+      });
     } catch (error) {
       contract.markFailed(error instanceof DomainError ? error.messageKey : 'errors.analysis_failed');
       await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: input.contractId,
+        userId: input.userId,
+        jobId: input.contractId,
+        type: 'failed',
+        payload: { status: 'FAILED', failureMessageKey: contract.failureReason },
+      });
       throw error;
+    }
+  }
+
+  /**
+   * Avisa el avance sin bloquear el analisis: si el bus falla se registra
+   * y el trabajo continua; el estado definitivo ya quedo persistido.
+   */
+  private async publishEvent(event: Omit<AnalysisEvent, 'occurredAt'>): Promise<void> {
+    if (!this.eventPublisher) return;
+    try {
+      await this.eventPublisher.publish({ ...event, occurredAt: this.clock() });
+    } catch (error) {
+      logger.error('Analysis event publish failed', {
+        contractId: event.contractId,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
     }
   }
 

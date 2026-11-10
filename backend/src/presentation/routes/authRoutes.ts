@@ -10,6 +10,7 @@ export function createAuthRouter(deps: {
   loginUseCase: LoginUseCase;
   refreshSessionUseCase: RefreshSessionUseCase;
   deleteAccountUseCase: DeleteAccountUseCase;
+  onAccountDeleted?: (userId: string) => void;
 }): Router {
   const router = Router();
 
@@ -87,6 +88,11 @@ export function createAuthRouter(deps: {
     try {
       const userId = req.user!.id;
       await deps.deleteAccountUseCase.execute(userId);
+      try {
+        deps.onAccountDeleted?.(userId);
+      } catch {
+        // Nunca bloquear la respuesta de borrado por el cierre de sockets.
+      }
       clearRefreshTokenCookie(res);
       res.status(200).json({ message: 'Account permanently deleted' });
     } catch (err) {

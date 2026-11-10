@@ -6,7 +6,8 @@ import type { AnalysisEventPublisher } from '../../domain/services/AnalysisEvent
 export interface RealtimeContext {
   ticketStore: RealtimeTicketStore;
   realtimeServer: RealtimeServer;
-  eventPublisher: AnalysisEventPublisher;
+  /** Solo definido cuando hay publicador cableado (memoria ahora, outbox luego). */
+  eventPublisher?: AnalysisEventPublisher;
 }
 
 const contexts = new WeakMap<Express, RealtimeContext>();

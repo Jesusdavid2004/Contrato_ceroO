@@ -46,6 +46,12 @@ import { UpdateObjectionLetterUseCase } from './application/use-cases/UpdateObje
 // Routes
 import { createAuthRouter } from './presentation/routes/authRoutes';
 import { createContractRouter } from './presentation/routes/contractRoutes';
+import { createRealtimeRouter } from './presentation/realtime/realtimeRoutes';
+import { RealtimeTicketStore } from './presentation/realtime/realtimeTickets';
+import { RealtimeServer } from './presentation/realtime/realtimeServer';
+import { registerRealtimeContext } from './presentation/realtime/realtimeContext';
+import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnalysisEventBus';
+import type { AnalysisEventPublisher } from './domain/services/AnalysisEventPublisher';
 
 export function createApp(options?: { inMemory?: boolean }) {
   const app = express();
@@ -114,6 +120,22 @@ export function createApp(options?: { inMemory?: boolean }) {
       new HuggingFaceLocalEmbeddingProvider(config.EMBEDDING_CACHE_DIR),
     )
     : undefined;
+  const ticketStore = new RealtimeTicketStore();
+  const realtimeServer = new RealtimeServer(
+    ticketStore,
+    async (userId, contractId) => {
+      const contract = await contractRepository.findById(contractId);
+      if (!contract) return null;
+      if (contract.ownerId !== userId) return 'forbidden';
+      return {
+        status: contract.status,
+        failureMessageKey: contract.failureReason,
+        globalRiskScore: contract.globalRiskScore,
+      };
+    },
+    { allowedOrigins },
+  );
+  const inMemoryEventPublisher: AnalysisEventPublisher = new InMemoryAnalysisEventBus(realtimeServer);
   const analysisUseCase = new AnalyzeContractUseCase(
     contractRepository,
     textExtractor,
@@ -123,6 +145,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     new InMemoryAIClassificationCache(),
     undefined,
     legalContextProvider,
+    isInMemory ? inMemoryEventPublisher : undefined,
   );
   const analysisWorker = new InProcessAnalysisWorker(analysisUseCase);
 
@@ -201,6 +224,9 @@ export function createApp(options?: { inMemory?: boolean }) {
     loginUseCase,
     refreshSessionUseCase,
     deleteAccountUseCase,
+    onAccountDeleted: (userId) => {
+      realtimeServer.closeUserConnections(userId);
+    },
   });
 
   const contractRouter = createContractRouter({
@@ -208,18 +234,28 @@ export function createApp(options?: { inMemory?: boolean }) {
     contractRepository,
     fileStorage,
     analysisWorker,
+    eventPublisher: isInMemory ? inMemoryEventPublisher : undefined,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,
   });
 
+  const realtimeRouter = createRealtimeRouter({ ticketStore });
+  registerRealtimeContext(app, {
+    ticketStore,
+    realtimeServer,
+    eventPublisher: isInMemory ? inMemoryEventPublisher : undefined,
+  });
+
   // Versioned v1 routes
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/contracts', contractRouter);
+  app.use('/api/v1/realtime', realtimeRouter);
 
   // Legacy route aliases for backwards compatibility
   app.use('/api/auth', authRouter);
   app.use('/api/contracts', contractRouter);
+  app.use('/api/realtime', realtimeRouter);
 
   // Centralized Error Handler
   app.use(errorHandler);
