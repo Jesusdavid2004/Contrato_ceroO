@@ -51,6 +51,10 @@ import { RealtimeTicketStore } from './presentation/realtime/realtimeTickets';
 import { RealtimeServer } from './presentation/realtime/realtimeServer';
 import { registerRealtimeContext } from './presentation/realtime/realtimeContext';
 import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnalysisEventBus';
+import {
+  PostgresAnalysisEventOutbox,
+  startOutboxPublisher,
+} from './infrastructure/realtime/PostgresAnalysisEventOutbox';
 import type { AnalysisEventPublisher } from './domain/services/AnalysisEventPublisher';
 
 export function createApp(options?: { inMemory?: boolean }) {
@@ -136,6 +140,13 @@ export function createApp(options?: { inMemory?: boolean }) {
     { allowedOrigins },
   );
   const inMemoryEventPublisher: AnalysisEventPublisher = new InMemoryAnalysisEventBus(realtimeServer);
+  const durableOutbox = isInMemory ? null : new PostgresAnalysisEventOutbox(pool);
+  const analysisEventPublisher: AnalysisEventPublisher | undefined = isInMemory
+    ? inMemoryEventPublisher
+    : (durableOutbox ?? undefined);
+  if (durableOutbox) {
+    startOutboxPublisher(pool, realtimeServer, durableOutbox);
+  }
   const analysisUseCase = new AnalyzeContractUseCase(
     contractRepository,
     textExtractor,
@@ -145,7 +156,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     new InMemoryAIClassificationCache(),
     undefined,
     legalContextProvider,
-    isInMemory ? inMemoryEventPublisher : undefined,
+    analysisEventPublisher,
   );
   const analysisWorker = new InProcessAnalysisWorker(analysisUseCase);
 
@@ -234,7 +245,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     contractRepository,
     fileStorage,
     analysisWorker,
-    eventPublisher: isInMemory ? inMemoryEventPublisher : undefined,
+    eventPublisher: analysisEventPublisher,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,
@@ -244,7 +255,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   registerRealtimeContext(app, {
     ticketStore,
     realtimeServer,
-    eventPublisher: isInMemory ? inMemoryEventPublisher : undefined,
+    eventPublisher: analysisEventPublisher,
   });
 
   // Versioned v1 routes
