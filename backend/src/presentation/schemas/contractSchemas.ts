@@ -104,5 +104,13 @@ export const completeReminderBodySchema = z.object({
   status: z.literal('done'),
 });
 
+export const requestReviewBodySchema = z.object({
+  note: z.string().trim().min(1).max(500).optional(),
+});
+
+export const updateReviewBodySchema = z.object({
+  status: z.enum(['in_review', 'reviewed']),
+});
+
 export type UploadContractBodyDTO = z.infer<typeof uploadContractBodySchema>;
 export type UpdateLetterBodyDTO = z.infer<typeof updateLetterBodySchema>;

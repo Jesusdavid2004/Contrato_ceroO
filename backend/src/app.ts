@@ -56,6 +56,9 @@ import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnal
 import { PostgresFactsRepository, InMemoryFactsRepository } from './infrastructure/repositories/FactsRepositoryImpl';
 import { PostgresRemindersRepository, InMemoryRemindersRepository } from './infrastructure/repositories/RemindersRepositoryImpl';
 import { CreateReminderUseCase, CompleteReminderUseCase } from './application/use-cases/ReminderUseCases';
+import { GenerateCaseReportUseCase } from './application/use-cases/ReportUseCases';
+import { RequestReviewUseCase, UpdateReviewUseCase } from './application/use-cases/ReviewUseCases';
+import { PostgresReviewRequestsRepository, InMemoryReviewRequestsRepository } from './infrastructure/repositories/ReviewRequestsRepositoryImpl';
 import { PostgresProposalsRepository, InMemoryProposalsRepository } from './infrastructure/repositories/ProposalsRepositoryImpl';
 import { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from './application/use-cases/ProposalUseCases';
 import { CompareContractsUseCase } from './application/use-cases/CompareContractsUseCase';
@@ -99,6 +102,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
   const factsRepository = isInMemory ? new InMemoryFactsRepository() : new PostgresFactsRepository(pool);
+  const reviewsRepository = isInMemory ? new InMemoryReviewRequestsRepository() : new PostgresReviewRequestsRepository(pool);
   const remindersRepository = isInMemory ? new InMemoryRemindersRepository() : new PostgresRemindersRepository(pool);
   const proposalsRepository = isInMemory ? new InMemoryProposalsRepository() : new PostgresProposalsRepository(pool);
   const fileStorage = new LocalFileStorage();
@@ -233,6 +237,14 @@ export function createApp(options?: { inMemory?: boolean }) {
   const createProposalUseCase = new CreateClauseProposalUseCase(contractRepository, proposalsRepository);
   const updateProposalUseCase = new UpdateClauseProposalUseCase(contractRepository, proposalsRepository);
   const compareContractsUseCase = new CompareContractsUseCase(contractRepository);
+  const generateCaseReportUseCase = new GenerateCaseReportUseCase(
+    contractRepository,
+    new PdfKitGenerator(),
+    factsRepository,
+    proposalsRepository,
+  );
+  const requestReviewUseCase = new RequestReviewUseCase(contractRepository, reviewsRepository);
+  const updateReviewUseCase = new UpdateReviewUseCase(contractRepository, reviewsRepository);
   const createReminderUseCase = new CreateReminderUseCase(contractRepository, remindersRepository);
   const completeReminderUseCase = new CompleteReminderUseCase(contractRepository, remindersRepository);
 
@@ -300,6 +312,10 @@ export function createApp(options?: { inMemory?: boolean }) {
     remindersRepository,
     createReminderUseCase,
     completeReminderUseCase,
+    generateCaseReportUseCase,
+    reviewsRepository,
+    requestReviewUseCase,
+    updateReviewUseCase,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,

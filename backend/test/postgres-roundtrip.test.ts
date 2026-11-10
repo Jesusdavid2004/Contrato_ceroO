@@ -3,6 +3,8 @@ import { Pool } from 'pg';
 import { PostgresContractRepository } from '../src/infrastructure/repositories/ContractRepositoryImpl';
 import { PostgresFactsRepository } from '../src/infrastructure/repositories/FactsRepositoryImpl';
 import { PostgresProposalsRepository } from '../src/infrastructure/repositories/ProposalsRepositoryImpl';
+import { PostgresRemindersRepository } from '../src/infrastructure/repositories/RemindersRepositoryImpl';
+import { PostgresReviewRequestsRepository } from '../src/infrastructure/repositories/ReviewRequestsRepositoryImpl';
 import {
   PostgresAnalysisEventOutbox,
 } from '../src/infrastructure/realtime/PostgresAnalysisEventOutbox';
@@ -175,10 +177,47 @@ describe.runIf(PG_URL)('PostgreSQL roundtrips (dev DB)', () => {
     expect(await outbox.publishPending(server)).toBe(0);
   });
 
+  it('recordatorios y revisiones con idempotencia y cascada', async () => {
+    const reminders = new PostgresRemindersRepository(pool);
+    const reviews = new PostgresReviewRequestsRepository(pool);
+    const first = await reminders.create({
+      id: `reminder-pg-${suffix}`,
+      contractId,
+      userId,
+      title: 'Preaviso',
+      dueAt: new Date('2026-12-01T15:00:00.000Z'),
+      timezone: 'America/Bogota',
+    });
+    expect(first.created).toBe(true);
+    const duplicate = await reminders.create({
+      id: `reminder-pg-dup-${suffix}`,
+      contractId,
+      userId,
+      title: 'Preaviso',
+      dueAt: new Date('2026-12-01T15:00:00.000Z'),
+      timezone: 'America/Bogota',
+    });
+    expect(duplicate.created).toBe(false);
+    expect(duplicate.reminder.id).toBe(first.reminder.id);
+    expect(await reminders.complete(first.reminder.id)).toMatchObject({ status: 'done' });
+
+    const opened = await reviews.open({
+      id: `review-pg-${suffix}`,
+      contractId,
+      userId,
+      note: 'Revisar.',
+    });
+    expect(opened.created).toBe(true);
+    expect((await reviews.setStatus(opened.review.id, 'in_review'))?.status).toBe('in_review');
+    expect(await reviews.latestForContract(contractId)).toMatchObject({ status: 'in_review' });
+  });
+
   it('borrar el contrato arrastra datos y propuestas (cascada)', async () => {
     await contracts.delete(contractId);
     expect(await facts.getFacts(contractId)).toHaveLength(0);
     const repo = new PostgresProposalsRepository(pool);
     expect(await repo.listByContract(contractId)).toHaveLength(0);
+    const reminders = new PostgresRemindersRepository(pool);
+    expect(await reminders.listByContract(contractId)).toHaveLength(0);
   });
 });

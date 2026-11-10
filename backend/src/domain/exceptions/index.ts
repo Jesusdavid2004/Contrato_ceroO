@@ -82,6 +82,18 @@ export class ProposalStateError extends DomainError {
   }
 }
 
+export class ReviewNotFoundError extends DomainError {
+  constructor(id: string) {
+    super(`Review request not found: ${id}`, 'errors.review_not_found', 404, { id });
+  }
+}
+
+export class ReviewStateError extends DomainError {
+  constructor(reason: string) {
+    super(reason, 'errors.review_transition_invalid', 409);
+  }
+}
+
 export class StagingExpiredError extends DomainError {
   constructor() {
     super(

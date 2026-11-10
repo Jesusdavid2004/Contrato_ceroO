@@ -747,6 +747,135 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /contracts/{id}/report.pdf:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: downloadCaseReport
+      security:
+        - bearerAuth: []
+      summary: Download the case file with findings and warnings
+      description: Context, summary, flagged fragments, confirmed facts, proposals, letter, sources, coverage and warnings. Nothing is sent anywhere.
+      responses:
+        "200":
+          description: Case file PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/{id}/review-request:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: getReviewRequest
+      security:
+        - bearerAuth: []
+      summary: Latest human review status
+      responses:
+        "200":
+          description: Latest review request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Contracts]
+      operationId: requestReview
+      security:
+        - bearerAuth: []
+      summary: Prepare a human review file (idempotent)
+      description: Shows pending until a reviewer exists; no expert review is simulated and nobody is contacted.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        "201":
+          description: Review requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "200":
+          description: Open request returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/review-requests/{reviewId}:
+    parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [Contracts]
+      operationId: updateReviewRequest
+      security:
+        - bearerAuth: []
+      summary: Move a review forward (owner only for now)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [in_review, reviewed]
+      responses:
+        "200":
+          description: Updated review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"
@@ -1120,6 +1249,28 @@ components:
           type: string
           enum: [pending, done]
         created_at:
+          type: string
+          format: date-time
+    ReviewRequest:
+      type: object
+      required: [id, contract_id, user_id, status, note, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        user_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_review, reviewed]
+          description: Owner-only transitions while no revocable reviewer role exists.
+        note:
+          type: [string, "null"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
           type: string
           format: date-time
     ObjectionLetter:

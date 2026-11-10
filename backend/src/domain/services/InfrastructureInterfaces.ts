@@ -50,8 +50,14 @@ export interface FileStorage {
   delete(key: string): Promise<void>;
 }
 
+export interface PdfReportSection {
+  heading: string;
+  body: string[];
+}
+
 export interface PdfGenerator {
   generateObjectionLetterPdf(letterText: string, metadata: { title: string; locale: string }): Promise<Buffer>;
+  generateCaseReportPdf(title: string, sections: PdfReportSection[]): Promise<Buffer>;
 }
 
 export interface Clock {

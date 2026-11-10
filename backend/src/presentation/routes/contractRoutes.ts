@@ -11,6 +11,7 @@ import {
   FactNotFoundError,
   FactTransitionError,
   ClauseNotFoundError,
+  ReviewNotFoundError,
 } from '../../domain/exceptions/index';
 import type { AnalysisJobQueue } from '../../domain/services/AnalysisJobs';
 import { FileValidator } from '../../infrastructure/services/FileValidator';
@@ -33,10 +34,13 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema, askQuestionBodySchema, createReminderBodySchema, completeReminderBodySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema, askQuestionBodySchema, createReminderBodySchema, completeReminderBodySchema, requestReviewBodySchema, updateReviewBodySchema } from '../schemas/contractSchemas';
 import { answerContractQuestion } from '../../domain/services/ContractQuestions';
 import type { CompareContractsUseCase } from '../../application/use-cases/CompareContractsUseCase';
 import type { CreateReminderUseCase, CompleteReminderUseCase } from '../../application/use-cases/ReminderUseCases';
+import type { GenerateCaseReportUseCase } from '../../application/use-cases/ReportUseCases';
+import type { ReviewRequestsRepository } from '../../domain/repositories/ReviewRequestsRepository';
+import type { RequestReviewUseCase, UpdateReviewUseCase } from '../../application/use-cases/ReviewUseCases';
 import { buildIcsCalendar } from '../../domain/services/CalendarExport';
 import { validateBody } from '../middleware/validationMiddleware';
 
@@ -55,6 +59,10 @@ export function createContractRouter(deps: {
   remindersRepository?: RemindersRepository;
   createReminderUseCase?: CreateReminderUseCase;
   completeReminderUseCase?: CompleteReminderUseCase;
+  generateCaseReportUseCase?: GenerateCaseReportUseCase;
+  reviewsRepository?: ReviewRequestsRepository;
+  requestReviewUseCase?: RequestReviewUseCase;
+  updateReviewUseCase?: UpdateReviewUseCase;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -495,6 +503,91 @@ export function createContractRouter(deps: {
       next(err);
     }
   });
+
+  // GET /:id/report.pdf (Case file: context, findings, proposals, sources)
+  router.get('/:id/report.pdf', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!deps.generateCaseReportUseCase) {
+        throw new Error('Case report is not wired in this router.');
+      }
+      const report = await deps.generateCaseReportUseCase.execute({
+        contractId: String(req.params.id),
+        userId: req.user!.id,
+      });
+      res
+        .status(200)
+        .type('application/pdf')
+        .attachment(report.filename)
+        .send(report.buffer);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /:id/review-request (Prepare a human review file, idempotent)
+  router.post(
+    '/:id/review-request',
+    requireAuth,
+    validateBody(requestReviewBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.requestReviewUseCase) {
+          throw new Error('Review requests are not wired in this router.');
+        }
+        const { review, created } = await deps.requestReviewUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+          note: req.body.note,
+        });
+        res.status(created ? 201 : 200).json(review.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/review-request (Latest review status)
+  router.get('/:id/review-request', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const review = await deps.reviewsRepository?.latestForContract(contractId);
+      if (!review) {
+        throw new ReviewNotFoundError(contractId);
+      }
+      res.status(200).json(review.toJSON());
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /review-requests/:reviewId (Move review forward)
+  router.put(
+    '/review-requests/:reviewId',
+    requireAuth,
+    validateBody(updateReviewBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.updateReviewUseCase) {
+          throw new Error('Review requests are not wired in this router.');
+        }
+        const review = await deps.updateReviewUseCase.execute({
+          reviewId: String(req.params.reviewId),
+          userId: req.user!.id,
+          status: req.body.status,
+        });
+        res.status(200).json(review.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // DELETE /:id (Delete contract with ownership check)
   router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
