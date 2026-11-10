@@ -56,6 +56,7 @@ import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnal
 import { PostgresFactsRepository, InMemoryFactsRepository } from './infrastructure/repositories/FactsRepositoryImpl';
 import { PostgresProposalsRepository, InMemoryProposalsRepository } from './infrastructure/repositories/ProposalsRepositoryImpl';
 import { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from './application/use-cases/ProposalUseCases';
+import { CompareContractsUseCase } from './application/use-cases/CompareContractsUseCase';
 import { EncryptedFileStaging } from './infrastructure/staging/EncryptedFileStaging';
 import { InMemoryStaging } from './infrastructure/staging/InMemoryStaging';
 import type { AnalysisStaging } from './domain/services/AnalysisStaging';
@@ -228,6 +229,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const updateObjectionLetterUseCase = new UpdateObjectionLetterUseCase(contractRepository);
   const createProposalUseCase = new CreateClauseProposalUseCase(contractRepository, proposalsRepository);
   const updateProposalUseCase = new UpdateClauseProposalUseCase(contractRepository, proposalsRepository);
+  const compareContractsUseCase = new CompareContractsUseCase(contractRepository);
 
   // Health probe
   app.get(['/health', '/api/health'], (_req, res) => {
@@ -289,6 +291,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     proposalsRepository,
     createProposalUseCase,
     updateProposalUseCase,
+    compareContractsUseCase,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,

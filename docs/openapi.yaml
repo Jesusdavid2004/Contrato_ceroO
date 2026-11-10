@@ -491,6 +491,71 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/compare:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+      - name: other_id
+        in: query
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Contracts]
+      operationId: compareContracts
+      security:
+        - bearerAuth: []
+      summary: Deterministic diff between two own READY contracts
+      description: >
+        Aligns clauses by similarity and reports added, removed and modified
+        (with word diff) plus reading limitations. Never legal equivalence,
+        never cross-user data.
+      responses:
+        "200":
+          description: Comparison result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [base_contract_id, other_contract_id, added, removed, modified, unchanged, truncated, limitations]
+                properties:
+                  base_contract_id:
+                    type: string
+                  other_contract_id:
+                    type: string
+                  added:
+                    type: array
+                    items:
+                      type: object
+                  removed:
+                    type: array
+                    items:
+                      type: object
+                  modified:
+                    type: array
+                    items:
+                      type: object
+                  unchanged:
+                    type: integer
+                  truncated:
+                    type: boolean
+                  limitations:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"

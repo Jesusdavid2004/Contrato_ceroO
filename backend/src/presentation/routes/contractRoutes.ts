@@ -32,7 +32,8 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema } from '../schemas/contractSchemas';
+import type { CompareContractsUseCase } from '../../application/use-cases/CompareContractsUseCase';
 import { validateBody } from '../middleware/validationMiddleware';
 
 export function createContractRouter(deps: {
@@ -46,6 +47,7 @@ export function createContractRouter(deps: {
   proposalsRepository?: ProposalsRepository;
   createProposalUseCase?: CreateClauseProposalUseCase;
   updateProposalUseCase?: UpdateClauseProposalUseCase;
+  compareContractsUseCase?: CompareContractsUseCase;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -334,6 +336,38 @@ export function createContractRouter(deps: {
       }
     },
   );
+
+  // GET /:id/compare?other_id= (Deterministic diff between own contracts)
+  router.get('/:id/compare', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const query = compareQuerySchema.parse(req.query);
+      if (!deps.compareContractsUseCase) {
+        throw new Error('Contract comparison is not wired in this router.');
+      }
+      const comparison = await deps.compareContractsUseCase.execute({
+        baseContractId: String(req.params.id),
+        otherContractId: query.other_id,
+        userId: req.user!.id,
+      });
+      res.status(200).json({
+        base_contract_id: comparison.baseContractId,
+        other_contract_id: comparison.otherContractId,
+        added: comparison.added,
+        removed: comparison.removed,
+        modified: comparison.modified.map((entry) => ({
+          base_clause_id: entry.baseClauseId,
+          other_clause_id: entry.otherClauseId,
+          similarity: entry.similarity,
+          text_diff: entry.textDiff.map((segment) => ({ type: segment.type, text: segment.text })),
+        })),
+        unchanged: comparison.unchanged,
+        truncated: comparison.truncated,
+        limitations: comparison.limitations,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
 
   // DELETE /:id (Delete contract with ownership check)
   router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {

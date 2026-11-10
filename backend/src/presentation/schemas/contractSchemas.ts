@@ -75,5 +75,9 @@ export const contractIdParamSchema = z.object({
   id: z.string().min(1, 'Contract ID is required'),
 });
 
+export const compareQuerySchema = z.object({
+  other_id: z.string().min(1, 'other_id is required'),
+});
+
 export type UploadContractBodyDTO = z.infer<typeof uploadContractBodySchema>;
 export type UpdateLetterBodyDTO = z.infer<typeof updateLetterBodySchema>;
