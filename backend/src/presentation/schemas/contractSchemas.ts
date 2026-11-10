@@ -2,10 +2,14 @@ import { z } from 'zod';
 
 export const contractTypeSchema = z.enum(['LEASE', 'SERVICE', 'EMPLOYMENT', 'OTHER']);
 
+export const userRoleSchema = z.enum(['tenant', 'consumer', 'employee', 'other']);
+
 export const uploadContractBodySchema = z.object({
   title: z.string().trim().max(255).optional(),
   contract_type: contractTypeSchema.optional(),
   contractType: contractTypeSchema.optional(),
+  user_role: userRoleSchema.optional(),
+  userRole: userRoleSchema.optional(),
   jurisdiction: z
     .string()
     .trim()

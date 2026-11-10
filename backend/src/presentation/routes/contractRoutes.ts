@@ -61,6 +61,7 @@ export function createContractRouter(deps: {
           jurisdiction: validatedBody.jurisdiction as any,
           locale: validatedBody.locale,
           title: validatedBody.title,
+          userRole: validatedBody.user_role || validatedBody.userRole,
         });
         if (deps.eventPublisher) {
           try {

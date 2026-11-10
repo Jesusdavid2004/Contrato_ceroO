@@ -4,6 +4,7 @@ import { Contract } from '../../domain/entities/Contract';
 import { FileValidator } from '../../infrastructure/services/FileValidator';
 import type { ContractType } from '../../domain/value-objects/ContractType';
 import type { Jurisdiction } from '../../domain/value-objects/Jurisdiction';
+import type { UserRole } from '../../domain/services/CoveragePolicy';
 import crypto from 'node:crypto';
 import path from 'node:path';
 
@@ -15,6 +16,7 @@ export interface UploadContractInput {
   jurisdiction?: Jurisdiction;
   locale?: string;
   title?: string;
+  userRole?: UserRole;
 }
 
 export class UploadContractUseCase {
@@ -44,6 +46,7 @@ export class UploadContractUseCase {
       contractType: input.contractType || 'OTHER',
       jurisdiction: input.jurisdiction || 'CO',
       locale: input.locale || 'es',
+      userRole: input.userRole || 'other',
       status: 'UPLOADED',
       clauses: [],
       uploadedAt: new Date(),
