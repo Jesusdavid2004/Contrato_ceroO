@@ -122,6 +122,31 @@ export class RealtimeServer {
     return delivered;
   }
 
+  /**
+   * Construye el envelope de un evento de contrato ya secuenciado por el
+   * bus/outbox y lo emite. La secuencia la ownea el publicador, no el socket.
+   */
+  public publishContractEvent(input: {
+    contractId: string;
+    jobId: string;
+    type: 'snapshot' | 'stage' | 'completed' | 'failed' | 'notification';
+    sequence: number;
+    payload: Record<string, unknown>;
+    occurredAt?: Date;
+  }): number {
+    const event: RealtimeEvent = {
+      eventId: randomUUID(),
+      schemaVersion: REALTIME_SCHEMA_VERSION,
+      type: input.type,
+      contractId: input.contractId,
+      jobId: input.jobId,
+      sequence: input.sequence,
+      occurredAt: (input.occurredAt ?? new Date(this.now())).toISOString(),
+      payload: input.payload,
+    };
+    return this.broadcast(input.contractId, event);
+  }
+
   public closeUserConnections(userId: string, reason = 'account deleted'): number {
     let closed = 0;
     for (const state of this.connections) {
