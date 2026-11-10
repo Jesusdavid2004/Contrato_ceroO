@@ -2,6 +2,24 @@ import { z } from 'zod';
 
 export const contractTypeSchema = z.enum(['LEASE', 'SERVICE', 'EMPLOYMENT', 'OTHER']);
 
+export const factKeySchema = z.enum([
+  'party_a',
+  'party_b',
+  'amount',
+  'currency',
+  'periodicity',
+  'duration',
+  'start_date',
+  'end_date',
+  'termination',
+]);
+
+export const confirmFactBodySchema = z.object({
+  key: factKeySchema,
+  status: z.enum(['confirmed', 'corrected']),
+  value: z.string().trim().min(1).max(500).optional(),
+});
+
 export const userRoleSchema = z.enum(['tenant', 'consumer', 'employee', 'other']);
 
 export const uploadContractBodySchema = z.object({

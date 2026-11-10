@@ -41,6 +41,23 @@ export class TextExtractionFailedError extends DomainError {
   }
 }
 
+export class FactNotFoundError extends DomainError {
+  constructor(contractId: string, key: string) {
+    super(`Fact not found: ${key}`, 'errors.fact_not_found', 404, { contractId, key });
+  }
+}
+
+export class FactTransitionError extends DomainError {
+  constructor(key: string, status: string) {
+    super(
+      `Invalid fact transition for ${key} to ${status}.`,
+      'errors.fact_transition_invalid',
+      422,
+      { key, status },
+    );
+  }
+}
+
 export class StagingExpiredError extends DomainError {
   constructor() {
     super(

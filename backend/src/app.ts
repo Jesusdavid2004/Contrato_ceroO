@@ -52,6 +52,7 @@ import { RealtimeTicketStore } from './presentation/realtime/realtimeTickets';
 import { RealtimeServer } from './presentation/realtime/realtimeServer';
 import { registerRealtimeContext } from './presentation/realtime/realtimeContext';
 import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnalysisEventBus';
+import { PostgresFactsRepository, InMemoryFactsRepository } from './infrastructure/repositories/FactsRepositoryImpl';
 import { EncryptedFileStaging } from './infrastructure/staging/EncryptedFileStaging';
 import { InMemoryStaging } from './infrastructure/staging/InMemoryStaging';
 import type { AnalysisStaging } from './domain/services/AnalysisStaging';
@@ -91,6 +92,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   }
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
+  const factsRepository = isInMemory ? new InMemoryFactsRepository() : new PostgresFactsRepository(pool);
   const fileStorage = new LocalFileStorage();
   const analysisStaging: AnalysisStaging = isInMemory
     ? new InMemoryStaging()
@@ -178,6 +180,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     legalContextProvider,
     analysisEventPublisher,
     analysisStaging,
+    factsRepository,
   );
   const analysisWorker = new InProcessAnalysisWorker(analysisUseCase);
 
@@ -268,6 +271,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     analysisWorker,
     eventPublisher: analysisEventPublisher,
     staging: analysisStaging,
+    factsRepository,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,

@@ -316,6 +316,57 @@ paths:
           $ref: "#/components/responses/Unauthorized"
         "429":
           $ref: "#/components/responses/RateLimited"
+  /contracts/{id}/facts:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    put:
+      tags: [Contracts]
+      operationId: confirmContractFact
+      security:
+        - bearerAuth: []
+      summary: Confirm or correct an extracted fact before use
+      description: >
+        found/unconfirmed facts can be confirmed (no value) or corrected
+        (value required); not_found only corrected; confirmed only corrected.
+        Requires READY analysis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, status]
+              properties:
+                key:
+                  type: string
+                  enum: [party_a, party_b, amount, currency, periodicity, duration, start_date, end_date, termination]
+                status:
+                  type: string
+                  enum: [confirmed, corrected]
+                value:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          description: Updated fact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fact"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"
@@ -550,6 +601,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Clause"
+        facts:
+          type: array
+          description: Key facts with evidence; present on detail reads when analysis stored them.
+          items:
+            $ref: "#/components/schemas/Fact"
     Clause:
       type: object
       required: [id, order_index, original_text, risk_level, confidence, plain_explanation, why_risky, legal_basis, suggested_change]
@@ -590,6 +646,23 @@ components:
           type: [integer, "null"]
         end_offset:
           type: [integer, "null"]
+    Fact:
+      type: object
+      required: [key, value, status, evidence_clause_id, evidence_quote]
+      properties:
+        key:
+          type: string
+          enum: [party_a, party_b, amount, currency, periodicity, duration, start_date, end_date, termination]
+        value:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [found, not_found, unconfirmed, confirmed, corrected]
+          description: Extracted states plus user-confirmed/corrected; confirm before use in documents.
+        evidence_clause_id:
+          type: [string, "null"]
+        evidence_quote:
+          type: [string, "null"]
     ObjectionLetter:
       type: object
       required: [id, contract_id, locale, content, created_at]

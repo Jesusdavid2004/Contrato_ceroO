@@ -23,6 +23,8 @@ import type {
 } from '../../domain/services/AnalysisEventPublisher';
 import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
 import { stagingUriFor } from '../../domain/services/AnalysisStaging';
+import type { FactsRepository } from '../../domain/repositories/FactsRepository';
+import { extractContractFacts } from '../../domain/services/ContractFacts';
 import { Contract } from '../../domain/entities/Contract';
 import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
@@ -52,6 +54,7 @@ export class AnalyzeContractUseCase {
     private readonly legalContextProvider?: LegalContextProvider,
     private readonly eventPublisher?: AnalysisEventPublisher,
     private readonly staging?: AnalysisStaging,
+    private readonly factsRepository?: FactsRepository,
   ) {}
 
   public async execute(input: AnalyzeContractInput): Promise<void> {
@@ -159,6 +162,20 @@ export class AnalyzeContractUseCase {
       }
 
       contract.setClauses(clauses);
+      if (this.factsRepository) {
+        const facts = extractContractFacts({
+          fullText: text,
+          clauses: clauses.map((clause) => ({
+            id: clause.id,
+            startOffset: clause.startOffset,
+            endOffset: clause.endOffset,
+          })),
+        });
+        await this.factsRepository.saveFacts(
+          contract.id,
+          facts.map((fact) => ({ ...fact })),
+        );
+      }
       contract.markReady();
       await this.contractRepository.save(contract);
       await this.publishEvent({

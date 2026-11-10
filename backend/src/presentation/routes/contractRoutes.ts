@@ -4,7 +4,13 @@ import type { UploadContractUseCase } from '../../application/use-cases/UploadCo
 import type { ContractRepository } from '../../domain/repositories/ContractRepository';
 import { requireAuth } from '../middleware/authMiddleware';
 import { aiIpLimiter, aiUserLimiter, uploadLimiter } from '../middleware/rateLimiter';
-import { ContractNotFoundError, ContractOwnershipError } from '../../domain/exceptions/index';
+import {
+  ContractNotFoundError,
+  ContractOwnershipError,
+  ContractNotReadyError,
+  FactNotFoundError,
+  FactTransitionError,
+} from '../../domain/exceptions/index';
 import type { InProcessAnalysisWorker } from '../../infrastructure/services/InProcessAnalysisWorker';
 import { FileValidator } from '../../infrastructure/services/FileValidator';
 import type { GenerateObjectionLetterUseCase } from '../../application/use-cases/GenerateObjectionLetterUseCase';
@@ -14,6 +20,7 @@ import type { FileStorage } from '../../domain/services/InfrastructureInterfaces
 import type { AnalysisEventPublisher } from '../../domain/services/AnalysisEventPublisher';
 import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
 import { stagingUriFor } from '../../domain/services/AnalysisStaging';
+import type { FactsRepository } from '../../domain/repositories/FactsRepository';
 import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
 
@@ -22,7 +29,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, confirmFactBodySchema } from '../schemas/contractSchemas';
 import { validateBody } from '../middleware/validationMiddleware';
 
 export function createContractRouter(deps: {
@@ -32,6 +39,7 @@ export function createContractRouter(deps: {
   analysisWorker?: InProcessAnalysisWorker;
   eventPublisher?: AnalysisEventPublisher;
   staging?: AnalysisStaging;
+  factsRepository?: FactsRepository;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -165,7 +173,74 @@ export function createContractRouter(deps: {
         throw new ContractOwnershipError(contractId);
       }
 
-      res.status(200).json(contract.toJSON());
+      const facts = await deps.factsRepository?.getFacts(contractId) ?? [];
+      res.status(200).json({
+        ...contract.toJSON(),
+        facts: facts.map((fact) => ({
+          key: fact.key,
+          value: fact.value,
+          status: fact.status,
+          evidence_clause_id: fact.evidenceClauseId,
+          evidence_quote: fact.evidenceQuote,
+        })),
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /:id/facts (Confirm or correct an extracted fact before use)
+  router.put('/:id/facts', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const body = confirmFactBodySchema.parse(req.body || {});
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      if (contract.status !== 'READY') {
+        throw new ContractNotReadyError(contractId);
+      }
+      if (!deps.factsRepository) {
+        throw new FactNotFoundError(contractId, body.key);
+      }
+      const current = (await deps.factsRepository.getFacts(contractId))
+        .find((fact) => fact.key === body.key);
+      if (!current) {
+        throw new FactNotFoundError(contractId, body.key);
+      }
+      const nextValue = body.status === 'corrected' ? (body.value ?? null) : current.value;
+      if (body.status === 'corrected' && !nextValue) {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      if (body.status === 'confirmed' && body.value !== undefined) {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      if (current.status === 'not_found' && body.status === 'confirmed') {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      if (current.status === 'confirmed' && body.status === 'confirmed') {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      const updated = await deps.factsRepository.updateFact(
+        contractId,
+        body.key,
+        nextValue,
+        body.status,
+      );
+      if (!updated) {
+        throw new FactNotFoundError(contractId, body.key);
+      }
+      res.status(200).json({
+        key: updated.key,
+        value: updated.value,
+        status: updated.status,
+        evidence_clause_id: updated.evidenceClauseId,
+        evidence_quote: updated.evidenceQuote,
+      });
     } catch (err) {
       next(err);
     }
