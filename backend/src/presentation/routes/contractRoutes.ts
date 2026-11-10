@@ -10,6 +10,7 @@ import {
   ContractNotReadyError,
   FactNotFoundError,
   FactTransitionError,
+  ClauseNotFoundError,
 } from '../../domain/exceptions/index';
 import type { InProcessAnalysisWorker } from '../../infrastructure/services/InProcessAnalysisWorker';
 import { FileValidator } from '../../infrastructure/services/FileValidator';
@@ -21,6 +22,8 @@ import type { AnalysisEventPublisher } from '../../domain/services/AnalysisEvent
 import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
 import { stagingUriFor } from '../../domain/services/AnalysisStaging';
 import type { FactsRepository } from '../../domain/repositories/FactsRepository';
+import type { ProposalsRepository } from '../../domain/repositories/ProposalsRepository';
+import type { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from '../../application/use-cases/ProposalUseCases';
 import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
 
@@ -29,7 +32,7 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema, confirmFactBodySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema } from '../schemas/contractSchemas';
 import { validateBody } from '../middleware/validationMiddleware';
 
 export function createContractRouter(deps: {
@@ -40,6 +43,9 @@ export function createContractRouter(deps: {
   eventPublisher?: AnalysisEventPublisher;
   staging?: AnalysisStaging;
   factsRepository?: FactsRepository;
+  proposalsRepository?: ProposalsRepository;
+  createProposalUseCase?: CreateClauseProposalUseCase;
+  updateProposalUseCase?: UpdateClauseProposalUseCase;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -245,6 +251,72 @@ export function createContractRouter(deps: {
       next(err);
     }
   });
+
+  // POST /:id/clauses/:clauseId/proposals (Propose an adjustment as draft)
+  router.post(
+    '/:id/clauses/:clauseId/proposals',
+    requireAuth,
+    validateBody(createProposalBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.createProposalUseCase || !deps.proposalsRepository) {
+          throw new Error('Clause proposals are not wired in this router.');
+        }
+        const proposal = await deps.createProposalUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+          clauseId: String(req.params.clauseId),
+          proposedText: req.body.proposed_text,
+          reason: req.body.reason,
+        });
+        res.status(201).json(proposal.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/proposals (List own clause proposals)
+  router.get('/:id/proposals', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const proposals = await deps.proposalsRepository?.listByContract(contractId) ?? [];
+      res.status(200).json(proposals.map((proposal) => proposal.toJSON()));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /proposals/:proposalId (Edit draft, accept for draft, or discard)
+  router.put(
+    '/proposals/:proposalId',
+    requireAuth,
+    validateBody(updateProposalBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.updateProposalUseCase) {
+          throw new Error('Clause proposals are not wired in this router.');
+        }
+        const proposal = await deps.updateProposalUseCase.execute({
+          proposalId: String(req.params.proposalId),
+          userId: req.user!.id,
+          action: req.body.action,
+          proposedText: req.body.proposed_text,
+          reason: req.body.reason,
+        });
+        res.status(200).json(proposal.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // DELETE /:id (Delete contract with ownership check)
   router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {

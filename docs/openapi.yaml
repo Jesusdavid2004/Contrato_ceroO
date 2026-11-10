@@ -367,6 +367,130 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/clauses/{clauseId}/proposals:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+      - name: clauseId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Contracts]
+      operationId: createClauseProposal
+      security:
+        - bearerAuth: []
+      summary: Propose an adjustment to a clause as a draft
+      description: Defaults the proposal to the clause suggested change; reason is required; requires READY analysis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                proposed_text:
+                  type: string
+                  maxLength: 2000
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "201":
+          description: Proposal draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/proposals:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: listClauseProposals
+      security:
+        - bearerAuth: []
+      summary: List own clause proposals
+      responses:
+        "200":
+          description: Proposals of the contract
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proposal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/proposals/{proposalId}:
+    parameters:
+      - name: proposalId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [Contracts]
+      operationId: updateClauseProposal
+      security:
+        - bearerAuth: []
+      summary: Edit a draft, accept it for the draft, or discard it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [accept, discard]
+                proposed_text:
+                  type: string
+                  maxLength: 2000
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          description: Updated proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Proposal no longer editable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"
@@ -663,6 +787,31 @@ components:
           type: [string, "null"]
         evidence_quote:
           type: [string, "null"]
+    Proposal:
+      type: object
+      required: [id, contract_id, clause_id, original_text, proposed_text, reason, status, version, created_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        clause_id:
+          type: string
+        original_text:
+          type: string
+        proposed_text:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [draft, accepted, discarded]
+          description: Accepting keeps the proposal in the user draft; it never changes the counterparty contract.
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
     ObjectionLetter:
       type: object
       required: [id, contract_id, locale, content, created_at]

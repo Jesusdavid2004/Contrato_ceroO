@@ -20,6 +20,20 @@ export const confirmFactBodySchema = z.object({
   value: z.string().trim().min(1).max(500).optional(),
 });
 
+export const createProposalBodySchema = z.object({
+  proposed_text: z.string().trim().min(1).max(2000).optional(),
+  reason: z.string().trim().min(1).max(1000),
+});
+
+export const updateProposalBodySchema = z.object({
+  action: z.enum(['accept', 'discard']).optional(),
+  proposed_text: z.string().trim().min(1).max(2000).optional(),
+  reason: z.string().trim().min(1).max(1000).optional(),
+}).refine(
+  (body) => body.action !== undefined || body.proposed_text !== undefined || body.reason !== undefined,
+  { message: 'Provide an action or fields to update.' },
+);
+
 export const userRoleSchema = z.enum(['tenant', 'consumer', 'employee', 'other']);
 
 export const uploadContractBodySchema = z.object({

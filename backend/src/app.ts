@@ -53,6 +53,8 @@ import { RealtimeServer } from './presentation/realtime/realtimeServer';
 import { registerRealtimeContext } from './presentation/realtime/realtimeContext';
 import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnalysisEventBus';
 import { PostgresFactsRepository, InMemoryFactsRepository } from './infrastructure/repositories/FactsRepositoryImpl';
+import { PostgresProposalsRepository, InMemoryProposalsRepository } from './infrastructure/repositories/ProposalsRepositoryImpl';
+import { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from './application/use-cases/ProposalUseCases';
 import { EncryptedFileStaging } from './infrastructure/staging/EncryptedFileStaging';
 import { InMemoryStaging } from './infrastructure/staging/InMemoryStaging';
 import type { AnalysisStaging } from './domain/services/AnalysisStaging';
@@ -93,6 +95,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
   const factsRepository = isInMemory ? new InMemoryFactsRepository() : new PostgresFactsRepository(pool);
+  const proposalsRepository = isInMemory ? new InMemoryProposalsRepository() : new PostgresProposalsRepository(pool);
   const fileStorage = new LocalFileStorage();
   const analysisStaging: AnalysisStaging = isInMemory
     ? new InMemoryStaging()
@@ -214,6 +217,8 @@ export function createApp(options?: { inMemory?: boolean }) {
     new PdfKitGenerator(),
   );
   const updateObjectionLetterUseCase = new UpdateObjectionLetterUseCase(contractRepository);
+  const createProposalUseCase = new CreateClauseProposalUseCase(contractRepository, proposalsRepository);
+  const updateProposalUseCase = new UpdateClauseProposalUseCase(contractRepository, proposalsRepository);
 
   // Health probe
   app.get(['/health', '/api/health'], (_req, res) => {
@@ -272,6 +277,9 @@ export function createApp(options?: { inMemory?: boolean }) {
     eventPublisher: analysisEventPublisher,
     staging: analysisStaging,
     factsRepository,
+    proposalsRepository,
+    createProposalUseCase,
+    updateProposalUseCase,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,

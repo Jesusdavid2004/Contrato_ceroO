@@ -58,6 +58,18 @@ export class FactTransitionError extends DomainError {
   }
 }
 
+export class ClauseNotFoundError extends DomainError {
+  constructor(clauseId: string) {
+    super(`Clause not found: ${clauseId}`, 'errors.clause_not_found', 404, { clauseId });
+  }
+}
+
+export class ProposalStateError extends DomainError {
+  constructor(reason: string) {
+    super(reason, 'errors.proposal_not_editable', 409);
+  }
+}
+
 export class StagingExpiredError extends DomainError {
   constructor() {
     super(
