@@ -80,6 +80,17 @@ export class StagingExpiredError extends DomainError {
   }
 }
 
+export class OutOfCoverageError extends DomainError {
+  constructor(jurisdiction: string, contractType: string) {
+    super(
+      `Analysis not covered for ${contractType} in ${jurisdiction}; no local conclusions are produced.`,
+      'errors.out_of_coverage',
+      422,
+      { jurisdiction, contractType },
+    );
+  }
+}
+
 export class ContractNotFoundError extends DomainError {
   constructor(contractId: string) {
     super(`Contract not found: ${contractId}`, 'errors.contract_not_found', 404, { contractId });

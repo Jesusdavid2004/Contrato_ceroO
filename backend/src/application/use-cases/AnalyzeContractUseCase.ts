@@ -6,6 +6,7 @@ import {
   ContractNotFoundError,
   ContractOwnershipError,
   DailyQuotaExceededError,
+  OutOfCoverageError,
   StagingExpiredError,
   TextExtractionFailedError,
 } from '../../domain/exceptions/index';
@@ -64,6 +65,21 @@ export class AnalyzeContractUseCase {
 
     const now = this.clock();
     const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    if (contract.coverageStatus === 'unsupported') {
+      // Sin conclusiones juridicas locales inventadas: se marca fallo
+      // explicito sin consumir cuota ni clasificar.
+      contract.markFailed('errors.out_of_coverage');
+      await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: contract.id,
+        userId: input.userId,
+        jobId: contract.id,
+        type: 'failed',
+        payload: { status: 'FAILED', failureMessageKey: 'errors.out_of_coverage' },
+      });
+      await this.cleanupStaging(input.stagingKey);
+      throw new OutOfCoverageError(contract.jurisdiction, contract.contractType);
+    }
     try {
       const { fileBuffer, mimeType: stagedMimeType } = await this.resolveInputBytes(input);
       const reserved = await this.usageRepository.reserveDailyAnalysis(
@@ -94,6 +110,7 @@ export class AnalyzeContractUseCase {
         const batch = segmented.slice(start, start + MAX_CLAUSES_PER_BATCH);
         const ids = batch.map(() => `clause-${randomUUID()}`);
         const clauseInputs = batch.map((clause, index) => ({ id: ids[index], text: clause.text }));
+        // Sin cobertura el analisis ya fallo arriba: aqui siempre hay alcance.
         const legalContext = this.legalContextProvider
           ? await this.legalContextProvider.retrieve(contract.jurisdiction, clauseInputs)
           : undefined;

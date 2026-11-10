@@ -117,6 +117,8 @@ describe('Staging wiring', () => {
     const upload = await request(app)
       .post('/api/v1/contracts')
       .set('Authorization', `Bearer ${token}`)
+      .field('contract_type', 'LEASE')
+      .field('jurisdiction', 'CO')
       .field('locale', 'es')
       .attach('contract', Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF'), 'c.pdf');
     expect(upload.status).toBe(201);
