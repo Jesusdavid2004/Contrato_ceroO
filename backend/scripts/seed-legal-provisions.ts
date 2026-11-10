@@ -54,13 +54,9 @@ async function seedLegalProvisions(): Promise<void> {
     `${JSON.stringify(coverage, null, 2)}\n`,
     'utf8',
   );
-  // Frontend copy: the Coverage page imports this generated file at build time.
-  // It is committed so the UI works without running the seed.
-  await fs.writeFile(
-    path.resolve(__dirname, '../../../frontend/src/data/legal-coverage.json'),
-    `${JSON.stringify(coverage, null, 2)}\n`,
-    'utf8',
-  );
+  // El frontend vive en otro repositorio: su copia
+  // (Contrato_cero_fronent/src/data/legal-coverage.json) se sincroniza a mano
+  // copiando backend/data/legal/coverage.json tras este seed.
 
   logger.info('Curated legal provisions seeded', {
     jurisdiction: 'CO',
