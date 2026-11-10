@@ -3,6 +3,7 @@ import type { ContractRepository } from '../../domain/repositories/ContractRepos
 import type { FileStorage } from '../../domain/services/InfrastructureInterfaces';
 import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
 import { stagingUriFor } from '../../domain/services/AnalysisStaging';
+import type { AnalysisJobQueue } from '../../domain/services/AnalysisJobs';
 import { UnauthorizedError } from '../../domain/exceptions/index';
 import { TokenService } from '../../infrastructure/security/SecurityServices';
 
@@ -39,6 +40,7 @@ export class DeleteAccountUseCase {
     private readonly contractRepository: ContractRepository,
     private readonly fileStorage: FileStorage,
     private readonly staging?: AnalysisStaging,
+    private readonly jobQueue?: AnalysisJobQueue,
   ) {}
 
   public async execute(userId: string): Promise<void> {
@@ -50,6 +52,7 @@ export class DeleteAccountUseCase {
       }
       await this.fileStorage.delete(contract.id);
       await this.staging?.remove(stagingUriFor(contract.id));
+      await this.jobQueue?.cancelForContract(contract.id);
       await this.contractRepository.delete(contract.id);
     }
 

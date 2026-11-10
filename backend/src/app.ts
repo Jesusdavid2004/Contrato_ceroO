@@ -27,7 +27,8 @@ import { GeminiDocumentProcessor } from './infrastructure/ai/GeminiDocumentProce
 import { LocalDocumentProcessor } from './infrastructure/ai/LocalDocumentProcessor';
 import { OfflineDocumentProcessor } from './infrastructure/ai/OfflineDocumentProcessor';
 import { InMemoryAIClassificationCache } from './infrastructure/services/InMemoryAIClassificationCache';
-import { InProcessAnalysisWorker } from './infrastructure/services/InProcessAnalysisWorker';
+import { PostgresAnalysisJobQueue, InMemoryAnalysisJobQueue } from './infrastructure/jobs/AnalysisJobQueueImpl';
+import { AnalysisJobRunner } from './infrastructure/jobs/AnalysisJobRunner';
 import { PostgresAIUsageRepository, InMemoryAIUsageRepository } from './infrastructure/repositories/AIUsageRepositoryImpl';
 import { PostgresLegalProvisionRepository } from './infrastructure/repositories/LegalProvisionRepositoryImpl';
 import { HuggingFaceLocalEmbeddingProvider } from './infrastructure/ai/HuggingFaceLocalEmbeddingProvider';
@@ -185,7 +186,15 @@ export function createApp(options?: { inMemory?: boolean }) {
     analysisStaging,
     factsRepository,
   );
-  const analysisWorker = new InProcessAnalysisWorker(analysisUseCase);
+  const analysisJobQueue = isInMemory
+    ? new InMemoryAnalysisJobQueue()
+    : new PostgresAnalysisJobQueue(pool);
+  const analysisJobRunner = new AnalysisJobRunner(
+    analysisJobQueue,
+    contractRepository,
+    (input) => analysisUseCase.execute(input),
+  );
+  analysisJobRunner.start();
 
   // Startup recovery: jobs interrupted by a restart can never complete.
   void new RecoverStuckContractsUseCase(
@@ -206,7 +215,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const registerUserUseCase = new RegisterUserUseCase(userRepository);
   const loginUseCase = new LoginUseCase(userRepository);
   const refreshSessionUseCase = new RefreshSessionUseCase(userRepository);
-  const deleteAccountUseCase = new DeleteAccountUseCase(userRepository, contractRepository, fileStorage, analysisStaging);
+  const deleteAccountUseCase = new DeleteAccountUseCase(userRepository, contractRepository, fileStorage, analysisStaging, analysisJobQueue);
   const uploadContractUseCase = new UploadContractUseCase(contractRepository, fileStorage);
   const generateObjectionLetterUseCase = new GenerateObjectionLetterUseCase(
     contractRepository,
@@ -273,7 +282,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     uploadContractUseCase,
     contractRepository,
     fileStorage,
-    analysisWorker,
+    jobQueue: analysisJobQueue,
     eventPublisher: analysisEventPublisher,
     staging: analysisStaging,
     factsRepository,

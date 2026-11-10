@@ -2,9 +2,10 @@ import type { ContractRepository } from '../../domain/repositories/ContractRepos
 
 /**
  * Startup recovery for analysis jobs interrupted by a restart or crash.
- * Contracts still sitting in EXTRACTING/ANALYZING past the job timeout can
- * never complete (the in-memory queue is gone), so they are marked FAILED
- * with a translated message key instead of polling forever.
+ * Contracts still sitting in EXTRACTING/ANALYZING past the job timeout are
+ * marked FAILED with a translated message key instead of polling forever.
+ * Primera red: el runner reclama leases vencidos de la cola durable; esto
+ * cubre contratos que quedaron a medias sin trabajo pendiente.
  */
 export const STUCK_JOB_FAILURE_KEY = 'errors.analysis_interrupted';
 

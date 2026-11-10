@@ -12,7 +12,7 @@ import {
   FactTransitionError,
   ClauseNotFoundError,
 } from '../../domain/exceptions/index';
-import type { InProcessAnalysisWorker } from '../../infrastructure/services/InProcessAnalysisWorker';
+import type { AnalysisJobQueue } from '../../domain/services/AnalysisJobs';
 import { FileValidator } from '../../infrastructure/services/FileValidator';
 import type { GenerateObjectionLetterUseCase } from '../../application/use-cases/GenerateObjectionLetterUseCase';
 import type { DownloadObjectionLetterPdfUseCase } from '../../application/use-cases/DownloadObjectionLetterPdfUseCase';
@@ -39,7 +39,7 @@ export function createContractRouter(deps: {
   uploadContractUseCase: UploadContractUseCase;
   contractRepository: ContractRepository;
   fileStorage?: FileStorage;
-  analysisWorker?: InProcessAnalysisWorker;
+  jobQueue?: AnalysisJobQueue;
   eventPublisher?: AnalysisEventPublisher;
   staging?: AnalysisStaging;
   factsRepository?: FactsRepository;
@@ -98,34 +98,51 @@ export function createContractRouter(deps: {
             });
           }
         }
-        if (deps.analysisWorker) {
-          const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
-          if (deps.staging) {
+        if (!deps.jobQueue || !deps.staging) {
+          throw new Error('Analysis pipeline is not wired in this router.');
+        }
+        const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
+        try {
+          await deps.staging.stage(
+            result.id,
+            { buffer: validatedFile.buffer, mimeType: validatedFile.detectedMime },
+            config.STAGING_TTL_MS,
+          );
+        } catch (error) {
+          logger.error('Analysis staging failed', {
+            contractId: result.id,
+            errorName: error instanceof Error ? error.name : 'UnknownError',
+          });
+        }
+        try {
+          await deps.jobQueue.enqueue({
+            contractId: result.id,
+            userId: req.user!.id,
+            stagingKey: result.id,
+            mimeType: validatedFile.detectedMime,
+          });
+        } catch (error) {
+          // Cola caida: estado terminal honesto en vez de UPLOADED eterno.
+          logger.error('Analysis enqueue failed', {
+            contractId: result.id,
+            errorName: error instanceof Error ? error.name : 'UnknownError',
+          });
+          const failed = await deps.contractRepository.findById(result.id);
+          if (failed && failed.ownerId === req.user!.id) {
+            failed.markFailed('errors.analysis_failed');
+            await deps.contractRepository.save(failed);
             try {
-              await deps.staging.stage(
-                result.id,
-                { buffer: validatedFile.buffer, mimeType: validatedFile.detectedMime },
-                config.STAGING_TTL_MS,
-              );
-            } catch (error) {
-              logger.error('Analysis staging failed', {
-                contractId: result.id,
-                errorName: error instanceof Error ? error.name : 'UnknownError',
+              await deps.eventPublisher?.publish({
+                contractId: failed.id,
+                userId: req.user!.id,
+                jobId: failed.id,
+                type: 'failed',
+                payload: { status: 'FAILED', failureMessageKey: 'errors.analysis_failed' },
+                occurredAt: new Date(),
               });
+            } catch {
+              // El estado ya quedo persistido; el aviso es mejor esfuerzo.
             }
-            deps.analysisWorker.enqueue({
-              contractId: result.id,
-              userId: req.user!.id,
-              stagingKey: result.id,
-              mimeType: validatedFile.detectedMime,
-            });
-          } else {
-            deps.analysisWorker.enqueue({
-              contractId: result.id,
-              userId: req.user!.id,
-              fileBuffer: validatedFile.buffer,
-              mimeType: validatedFile.detectedMime,
-            });
           }
         }
 
@@ -343,6 +360,7 @@ export function createContractRouter(deps: {
           // El borrado del contrato no depende del staging.
         }
       }
+      await deps.jobQueue?.cancelForContract(contractId);
       await deps.contractRepository.delete(contractId);
       res.status(200).json({ message: 'Contract deleted' });
     } catch (err) {
