@@ -29,11 +29,21 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 | Staging cifrado con TTL (AES-GCM, purga, llave por env) | Hecho | `beb8bab` | `analysis-staging.test.ts` 5/5 |
 | Staging en subida/worker/borrado + `errors.staging_expired` | Hecho | `243a48c` + frontend `01dd4d0` | `analysis-staging-wiring.test.ts` 3/3 |
 
+## Backend — fase jobs (cola durable)
+
+| Requisito | Estado | Commit | Prueba |
+|---|---|---|---|
+| Cola en PG con leases, idempotencia y reintentos | Hecho | `f323105` + `b87ef98` | `analysis-jobs.test.ts` 4/4; migracion `...013` en PG real |
+| Runner (done/reintento/terminal/cancelacion, sin resurreccion) | Hecho | `c00fe36` + `2345b8a` | `analysis-job-runner.test.ts` 4/4 |
+| Cableado ruta/borrado + retiro del worker en memoria | Hecho | `f2b2d96` + `c00fe36` | Suite 189/189 |
+| Roundtrip PG de la cola | Hecho | este ciclo | `analysis-jobs-pg.test.ts` 3/3 real |
+| Suite backend | Verde | — | 189/189 (+9 PG condicionales) |
+
 ## Backend — fase 5 (cobertura conductual y revision)
 
 | Requisito | Estado | Commit | Prueba |
 |---|---|---|---|
-| Migraciones `...006`–`...012` ejecutadas en PG 15 local | Hecho | `217a323` + este ciclo | `postgres-roundtrip.test.ts` 6/6 real |
+| Migraciones `...006`–`...012` ejecutadas en PG 15 local | Hecho | `217a323` | `postgres-roundtrip.test.ts` 6/6 real |
 | Bloqueo fuera de cobertura (sin IA/cuota, staging limpio, RAG omitido) | Hecho | `50a71c4` | `contract-coverage-gate.test.ts` 2/2; suite intacta |
 | `requires_review` separado de riesgo (umbral 0.6, migracion `...012`) | Hecho | `a52fde5` | evidencia extendida; roundtrip PG; OpenAPI |
 | Suite backend | Verde | — | 181/181 (+6 PG condicionales) |
@@ -43,9 +53,9 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 | Requisito | Estado | Commit | Prueba |
 |---|---|---|---|
 | Datos clave con evidencia (reglas documentadas, 9 claves) | Hecho | `9b4f4b2` | `contract-facts.test.ts` 3/3 |
-| Persistencia datos + confirmar/corregir con transiciones | Hecho (codigo) | `96169fe` | `contract-facts-api.test.ts` 3/3; migracion `...009` sin PG real |
-| Propuestas original/propuesta/motivo con borrador versionado | Hecho (codigo) | `f4204b5` | `clause-proposals.test.ts` 3/3; migracion `...010` sin PG real |
-| Carta con hallazgos/destinatario/proposito/tono + trazabilidad | Hecho | `ba23167` | `objection-letter-selection.test.ts` 4/4; migracion `...011` sin PG real |
+| Persistencia datos + confirmar/corregir con transiciones | Hecho | `96169fe` | `contract-facts-api.test.ts` 3/3; migracion `...009` verificada en PG |
+| Propuestas original/propuesta/motivo con borrador versionado | Hecho | `f4204b5` | `clause-proposals.test.ts` 3/3; migracion `...010` verificada en PG |
+| Carta con hallazgos/destinatario/proposito/tono + trazabilidad | Hecho | `ba23167` | `objection-letter-selection.test.ts` 4/4; migracion `...011` verificada en PG |
 | Suite backend | Verde | — | 177/177 |
 
 ## Frontend (Contrato_cero_fronent, rama feat/realtime-client)
@@ -58,13 +68,14 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 
 ## Pendientes honestos
 
-- **PG verificado**: migraciones `...006`–`...012` aplicadas y roundtrips
-  6/6 en PG 15 local (volumen preservado, servicios detenidos).
+- **PG verificado**: migraciones `...006`–`...013` aplicadas y roundtrips
+  9/9 en PG 15 local (volumen preservado, servicios detenidos).
+- **Cola durable**: operando (leases, backoff, idempotencia, cancelación);
+  sin apagón elegante aún (los leases vencen y se reclaman) y sin
+  declaración de multi-instancia.
 - **Fase 5 restante**: filtro RAG por tema (hoy solo jurisdicción),
   gestión reproducible de fuentes (CLI), OCR revisable con reanálisis,
   análisis parcial por página, pagerender (`page_number` aún null).
-- **Cola duradera de jobs**: solo outbox de eventos; trabajos en PG con
-  leases pendientes (staging deja bytes disponibles).
 - **UI pendiente**: mostrar `requires_review`, cobertura y datos en el
   frontend (backend expone todo; locales listos).
 - **Fases 7-8 sin empezar**: chat con citas, diff, agenda `.ics`,
