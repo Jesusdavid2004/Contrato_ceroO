@@ -35,10 +35,21 @@ export const eventEnvelopeSchema = z.object({
   schemaVersion: z.literal(REALTIME_SCHEMA_VERSION),
   type: serverEventTypeSchema,
   contractId: contractIdSchema.optional(),
-  jobId: z.string().min(1).max(128),
+  jobId: z.string().min(1).max(128).optional(),
   sequence: z.number().int().nonnegative(),
   occurredAt: z.string().datetime(),
   payload: z.record(z.string(), z.unknown()),
+}).superRefine((envelope, context) => {
+  const needsJob = envelope.type === 'snapshot'
+    || envelope.type === 'stage'
+    || envelope.type === 'completed'
+    || envelope.type === 'failed';
+  if (needsJob && (!envelope.contractId || !envelope.jobId)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `${envelope.type} requires contractId and jobId`,
+    });
+  }
 });
 
 export type RealtimeEvent = z.infer<typeof eventEnvelopeSchema>;

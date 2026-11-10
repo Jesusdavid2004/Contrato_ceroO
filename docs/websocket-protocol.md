@@ -54,7 +54,7 @@ Sobre (envelope) comun, validado con Zod en ambos extremos:
 | `schemaVersion` | `1` | Version del protocolo |
 | `type` | enum | `snapshot`, `stage`, `completed`, `failed`, `notification`, `error`, `pong` |
 | `contractId` | string? | Presente en eventos de contrato |
-| `jobId` | string | `contractId` del analisis (un job por contrato) |
+| `jobId` | string? | Job del analisis; ausente en `pong` y errores de conexion |
 | `sequence` | int >= 0 | Creciente por job; descartar `<=` ultimo visto |
 | `occurredAt` | ISO datetime | Reloj del servidor |
 | `payload` | objeto | Validado por tipo (ver abajo) |
@@ -62,7 +62,8 @@ Sobre (envelope) comun, validado con Zod en ambos extremos:
 Tipos y payloads:
 
 - `snapshot`: estado actual tras suscribirse o reconectar.
-  `{ status, failureMessageKey }`.
+  `{ status, failureMessageKey }`. Lleva `sequence: 0` y el cliente lo trata
+  como reinicio de su watermark por job, nunca como evento ordenado.
 - `stage`: cambio de etapa. `{ status }` con `status` en
   `UPLOADED | EXTRACTING | ANALYZING`.
 - `completed`: analisis listo. `{ status: "READY", globalRiskScore }`.
