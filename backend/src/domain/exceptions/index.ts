@@ -58,6 +58,18 @@ export class FactTransitionError extends DomainError {
   }
 }
 
+export class ReminderNotFoundError extends DomainError {
+  constructor(id: string) {
+    super(`Reminder not found: ${id}`, 'errors.reminder_not_found', 404, { id });
+  }
+}
+
+export class ReminderDateError extends DomainError {
+  constructor() {
+    super('Reminder due date must be an unambiguous future date.', 'errors.reminder_invalid_date', 422);
+  }
+}
+
 export class ClauseNotFoundError extends DomainError {
   constructor(clauseId: string) {
     super(`Clause not found: ${clauseId}`, 'errors.clause_not_found', 404, { clauseId });
