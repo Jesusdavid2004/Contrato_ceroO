@@ -1,4 +1,7 @@
-# ContratoClaro
+# ContratoClaro — Backend
+
+> Este repo es solo el **backend** (API Express + worker + DB).
+> Frontend separado en: https://github.com/Jesusdavid2004/Contrato_cero_fronent
 
 ContratoClaro helps tenants, consumers, and employees understand risky terms
 in contracts and prepare a respectful objection letter. It provides general
