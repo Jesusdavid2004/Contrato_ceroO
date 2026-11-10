@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import request from 'supertest';
 import { createApp } from '../src/app';
 import { COVERAGE_RULES_VERSION } from '../src/domain/services/CoveragePolicy';
@@ -56,5 +58,19 @@ describe('Contract context (role and coverage)', () => {
       .attach('contract', Buffer.from('%PDF-1.4\n1 0 obj\n<<>>\nendobj\n%%EOF'), 'x.pdf');
 
     expect(res.status).toBe(422);
+  });
+
+  it('migration 1700000000007 declares context columns and honest backfill', () => {
+    const file = fs.readFileSync(
+      path.resolve(__dirname, '..', 'migrations', '1700000000007_contract_context.cjs'),
+      'utf8',
+    );
+    expect(file).toContain('user_role');
+    expect(file).toContain('coverage_status');
+    expect(file).toContain('coverage_rules_version');
+    expect(file).toContain("'experimental'");
+    expect(file).toContain("'unsupported'");
+    expect(file).not.toContain("'supported'");
+    // NOTE: real execution against PostgreSQL is pending (no local DB).
   });
 });

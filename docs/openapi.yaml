@@ -524,6 +524,15 @@ components:
           type: string
         locale:
           type: string
+        user_role:
+          type: string
+          enum: [tenant, consumer, employee, other]
+        coverage_status:
+          type: string
+          enum: [supported, experimental, unsupported]
+          description: Analysis coverage for this jurisdiction and type; nothing is supported without recorded legal review.
+        coverage_rules_version:
+          type: string
         status:
           $ref: "#/components/schemas/ContractStatus"
         global_risk_score:

@@ -11,6 +11,7 @@ export class PostgresContractRepository implements ContractRepository {
   public async findById(id: string): Promise<Contract | null> {
     const contractRes = await this.pool.query(
       `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
+              user_role, coverage_status, coverage_rules_version,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts WHERE id = $1`,
       [id],
@@ -50,6 +51,9 @@ export class PostgresContractRepository implements ContractRepository {
       contractType: row.contract_type,
       jurisdiction: row.jurisdiction,
       locale: row.locale,
+      userRole: row.user_role ?? undefined,
+      coverageStatus: row.coverage_status ?? undefined,
+      coverageRulesVersion: row.coverage_rules_version ?? undefined,
       status: row.status,
       globalRiskScore: row.global_risk_score,
       uploadedAt: new Date(row.uploaded_at),
@@ -61,6 +65,7 @@ export class PostgresContractRepository implements ContractRepository {
   public async findByOwnerId(ownerId: string): Promise<Contract[]> {
     const res = await this.pool.query(
       `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
+              user_role, coverage_status, coverage_rules_version,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts WHERE user_id = $1 ORDER BY uploaded_at DESC`,
       [ownerId],
@@ -77,6 +82,9 @@ export class PostgresContractRepository implements ContractRepository {
           contractType: row.contract_type,
           jurisdiction: row.jurisdiction,
           locale: row.locale,
+          userRole: row.user_role ?? undefined,
+          coverageStatus: row.coverage_status ?? undefined,
+          coverageRulesVersion: row.coverage_rules_version ?? undefined,
           status: row.status,
           globalRiskScore: row.global_risk_score,
           uploadedAt: new Date(row.uploaded_at),
@@ -93,12 +101,16 @@ export class PostgresContractRepository implements ContractRepository {
 
       await client.query(
         `INSERT INTO contracts (id, user_id, title, file_name, storage_uri, contract_type, jurisdiction,
-                               locale, status, global_risk_score, uploaded_at, failure_reason)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                               locale, user_role, coverage_status, coverage_rules_version,
+                               status, global_risk_score, uploaded_at, failure_reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          ON CONFLICT (id) DO UPDATE SET
            status = EXCLUDED.status,
            global_risk_score = EXCLUDED.global_risk_score,
            failure_reason = EXCLUDED.failure_reason,
+           user_role = EXCLUDED.user_role,
+           coverage_status = EXCLUDED.coverage_status,
+           coverage_rules_version = EXCLUDED.coverage_rules_version,
            storage_uri = COALESCE(EXCLUDED.storage_uri, contracts.storage_uri),
            status_updated_at = NOW()`,
         [
@@ -110,6 +122,9 @@ export class PostgresContractRepository implements ContractRepository {
           contract.contractType,
           contract.jurisdiction,
           contract.locale,
+          contract.userRole,
+          contract.coverageStatus,
+          contract.coverageRulesVersion,
           contract.status,
           contract.globalRiskScore,
           contract.uploadedAt,
@@ -162,6 +177,7 @@ export class PostgresContractRepository implements ContractRepository {
   public async findStuckContracts(olderThan: Date): Promise<Contract[]> {
     const res = await this.pool.query(
       `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
+              user_role, coverage_status, coverage_rules_version,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts
        WHERE status IN ('EXTRACTING', 'ANALYZING') AND status_updated_at < $1
@@ -180,6 +196,9 @@ export class PostgresContractRepository implements ContractRepository {
           contractType: row.contract_type,
           jurisdiction: row.jurisdiction,
           locale: row.locale,
+          userRole: row.user_role ?? undefined,
+          coverageStatus: row.coverage_status ?? undefined,
+          coverageRulesVersion: row.coverage_rules_version ?? undefined,
           status: row.status,
           globalRiskScore: row.global_risk_score,
           uploadedAt: new Date(row.uploaded_at),
