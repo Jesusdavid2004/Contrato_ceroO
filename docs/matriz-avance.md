@@ -58,6 +58,15 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
 | Carta con hallazgos/destinatario/proposito/tono + trazabilidad | Hecho | `ba23167` | `objection-letter-selection.test.ts` 4/4; migracion `...011` verificada en PG |
 | Suite backend | Verde | — | 177/177 |
 
+## Backend — fase 7 (comparacion y preguntas)
+
+| Requisito | Estado | Commit | Prueba |
+|---|---|---|---|
+| Diff determinista (Jaccard + LCS, umbrales documentados) | Hecho | `0fce31a` | `clause-diff.test.ts` 4/4 |
+| Comparacion entre propios con limites de lectura | Hecho | `0e63831` | `contract-compare.test.ts` 3/3; OpenAPI 18 paths |
+| Preguntas con citas, sin LLM ni persistencia | Hecho | `0e6f04c` | `contract-questions.test.ts` 3/3; OpenAPI 19 paths |
+| Suite backend | Verde | — | 199/199 (+9 PG condicionales) |
+
 ## Frontend (Contrato_cero_fronent, rama feat/realtime-client)
 
 | Requisito | Estado | Commit | Prueba |
@@ -78,8 +87,8 @@ lo no ejecutado va en Pendientes. Repos: `Contrato_ceroO` = backend,
   análisis parcial por página, pagerender (`page_number` aún null).
 - **UI pendiente**: mostrar `requires_review`, cobertura y datos en el
   frontend (backend expone todo; locales listos).
-- **Fases 7-8 sin empezar**: chat con citas, diff, agenda `.ics`,
-  informe PDF, revisión humana.
+- **Fases 7 parcial / 8 sin empezar**: diff y preguntas con citas hechos;
+  faltan agenda `.ics`, informe PDF, revisión humana.
 - **Fase 9 parcial**: regresión verde en ambos; falta E2E contra backend
   real, a11y manual y switch Railway (requiere autorización).
 - Push a `origin` no realizado (decisión: solo commits locales).
