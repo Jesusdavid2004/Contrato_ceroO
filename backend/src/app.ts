@@ -68,7 +68,13 @@ export function createApp(options?: { inMemory?: boolean }) {
   app.use(helmet());
   const allowedOrigins = config.NODE_ENV === 'production'
     ? [config.CORS_ORIGIN]
-    : [config.CORS_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'];
+    : [
+      config.CORS_ORIGIN,
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    ];
   app.use(
     cors({
       origin: allowedOrigins,
