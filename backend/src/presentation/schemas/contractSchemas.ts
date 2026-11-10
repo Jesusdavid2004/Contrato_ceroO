@@ -79,5 +79,9 @@ export const compareQuerySchema = z.object({
   other_id: z.string().min(1, 'other_id is required'),
 });
 
+export const askQuestionBodySchema = z.object({
+  question: z.string().trim().min(1).max(500),
+});
+
 export type UploadContractBodyDTO = z.infer<typeof uploadContractBodySchema>;
 export type UpdateLetterBodyDTO = z.infer<typeof updateLetterBodySchema>;

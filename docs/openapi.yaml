@@ -556,6 +556,68 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/questions:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    post:
+      tags: [Contracts]
+      operationId: askContractQuestion
+      security:
+        - bearerAuth: []
+      summary: Restricted Q&A over own READY analysis
+      description: >
+        Retrieval over stored clauses and facts with verifiable citations;
+        no generative model, no tools, no persistence. Answers "not found"
+        without evidence. Rate limited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+      responses:
+        "200":
+          description: Answer with citations or not-found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [found, answer, citations, limits]
+                properties:
+                  found:
+                    type: boolean
+                  answer:
+                    type: string
+                  citations:
+                    type: array
+                    items:
+                      type: object
+                  limits:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"

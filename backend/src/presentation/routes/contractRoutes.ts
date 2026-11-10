@@ -32,7 +32,8 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema, askQuestionBodySchema } from '../schemas/contractSchemas';
+import { answerContractQuestion } from '../../domain/services/ContractQuestions';
 import type { CompareContractsUseCase } from '../../application/use-cases/CompareContractsUseCase';
 import { validateBody } from '../middleware/validationMiddleware';
 
@@ -368,6 +369,40 @@ export function createContractRouter(deps: {
       next(err);
     }
   });
+
+  // POST /:id/questions (Restricted Q&A over own analysis, no LLM)
+  router.post(
+    '/:id/questions',
+    requireAuth,
+    aiIpLimiter,
+    aiUserLimiter,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const body = askQuestionBodySchema.parse(req.body || {});
+        const contractId = String(req.params.id);
+        const contract = await deps.contractRepository.findById(contractId);
+        if (!contract) {
+          throw new ContractNotFoundError(contractId);
+        }
+        if (contract.ownerId !== req.user!.id) {
+          throw new ContractOwnershipError(contractId);
+        }
+        if (contract.status !== 'READY') {
+          throw new ContractNotReadyError(contractId);
+        }
+        const facts = await deps.factsRepository?.getFacts(contractId) ?? [];
+        const result = answerContractQuestion({
+          question: body.question,
+          locale: contract.locale,
+          clauses: [...contract.clauses],
+          facts,
+        });
+        res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // DELETE /:id (Delete contract with ownership check)
   router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {

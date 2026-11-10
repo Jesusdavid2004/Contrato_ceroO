@@ -21,7 +21,6 @@ export interface ContractAnswer {
   limits: string[];
 }
 
-const MAX_QUESTION_LENGTH = 500;
 const MIN_OVERLAP = 2;
 
 function tokens(text: string): Set<string> {
@@ -40,16 +39,6 @@ function overlap(question: Set<string>, text: string): number {
     if (words.has(token)) count += 1;
   }
   return count;
-}
-
-export function validateQuestion(question: unknown): string {
-  if (typeof question !== 'string' || question.trim().length === 0) {
-    throw new Error('Question must be a non-empty string.');
-  }
-  if (question.length > MAX_QUESTION_LENGTH) {
-    throw new Error(`Question must not exceed ${MAX_QUESTION_LENGTH} characters.`);
-  }
-  return question.trim();
 }
 
 export function answerContractQuestion(input: {
