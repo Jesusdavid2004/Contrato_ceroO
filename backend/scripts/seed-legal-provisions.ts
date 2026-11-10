@@ -6,21 +6,14 @@ import { LegalProvision } from '../src/domain/entities/LegalProvision';
 import {
   buildCoverageReport,
   loadLegalCorpus,
+  resolveCorpusDir,
 } from '../src/infrastructure/legal/corpusLoader';
 import { config } from '../src/shared/config';
 import { logger } from '../src/shared/logger';
 import { pool } from '../src/infrastructure/database/pool';
 
-const CORPUS_DIRNAME = 'data/legal';
-
-/**
- * Seeds the versioned, multi-domain legal corpus declared in
- * `backend/data/legal/manifest.json`. Every provision is embedded with the
- * local multilingual model (no external API), upserted by id, and summarized
- * into a committed coverage report for the frontend Coverage page.
- */
 async function seedLegalProvisions(): Promise<void> {
-  const corpusDir = path.resolve(__dirname, '..', CORPUS_DIRNAME);
+  const corpusDir = resolveCorpusDir();
   const items = await loadLegalCorpus(corpusDir, 'CO');
 
   const embedder = new HuggingFaceLocalEmbeddingProvider(

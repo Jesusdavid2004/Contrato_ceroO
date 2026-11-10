@@ -15,6 +15,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
 COPY --from=build --chown=node:node /app/dist ./dist
+COPY --from=build --chown=node:node /app/data ./data
 COPY --from=build --chown=node:node /app/migrations ./migrations
 COPY --from=build --chown=node:node /app/scripts/migrate.cjs ./scripts/migrate.cjs
 RUN mkdir -p /app/storage/models /app/storage/contracts \

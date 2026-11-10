@@ -13,6 +13,7 @@
     "migrate:up": "node scripts/migrate.cjs up",
     "migrate:down": "node scripts/migrate.cjs down",
     "seed:legal": "npm run build && node dist/scripts/seed-legal-provisions.js",
+    "legal:validate": "npm run build && node dist/scripts/legal-validate.js",
     "seed:demo": "npm run build && npm run migrate:up && node dist/scripts/seed-demo.js"
   },
   "keywords": [],
