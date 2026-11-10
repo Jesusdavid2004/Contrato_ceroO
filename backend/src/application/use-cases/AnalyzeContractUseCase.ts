@@ -143,6 +143,9 @@ export class AnalyzeContractUseCase {
             whyRisky: classification.why_risky,
             legalBasis: this.enrichLegalBasis(legalContext, ids[index], classification.legal_basis),
             suggestedChange: classification.suggested_change,
+            pageNumber: batch[index].pageNumber ?? null,
+            startOffset: batch[index].startOffset ?? null,
+            endOffset: batch[index].endOffset ?? null,
           }));
         }
       }

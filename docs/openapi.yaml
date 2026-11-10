@@ -583,6 +583,13 @@ components:
                 type: string
         suggested_change:
           type: [string, "null"]
+        page_number:
+          type: [integer, "null"]
+          description: Source page when reliably known; null otherwise, never invented.
+        start_offset:
+          type: [integer, "null"]
+        end_offset:
+          type: [integer, "null"]
     ObjectionLetter:
       type: object
       required: [id, contract_id, locale, content, created_at]

@@ -21,7 +21,8 @@ export class PostgresContractRepository implements ContractRepository {
 
     const clausesRes = await this.pool.query(
       `SELECT id, contract_id, order_index, original_text, risk_level, confidence,
-              plain_explanation, why_risky, legal_basis, suggested_change
+              plain_explanation, why_risky, legal_basis, suggested_change,
+              page_number, start_offset, end_offset
        FROM clauses WHERE contract_id = $1 ORDER BY order_index ASC`,
       [id],
     );
@@ -39,6 +40,9 @@ export class PostgresContractRepository implements ContractRepository {
           whyRisky: c.why_risky,
           legalBasis: c.legal_basis || [],
           suggestedChange: c.suggested_change,
+          pageNumber: c.page_number ?? null,
+          startOffset: c.start_offset ?? null,
+          endOffset: c.end_offset ?? null,
         }),
     );
 
@@ -138,8 +142,9 @@ export class PostgresContractRepository implements ContractRepository {
         for (const c of contract.clauses) {
           await client.query(
             `INSERT INTO clauses (id, contract_id, order_index, original_text, risk_level,
-                                 confidence, plain_explanation, why_risky, legal_basis, suggested_change)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                                 confidence, plain_explanation, why_risky, legal_basis, suggested_change,
+                                 page_number, start_offset, end_offset)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
             [
               c.id,
               contract.id,
@@ -151,6 +156,9 @@ export class PostgresContractRepository implements ContractRepository {
               c.whyRisky,
               JSON.stringify(c.legalBasis),
               c.suggestedChange,
+              c.pageNumber,
+              c.startOffset,
+              c.endOffset,
             ],
           );
         }

@@ -7,6 +7,12 @@ export interface TextExtractor {
 export interface SegmentedClause {
   orderIndex: number;
   text: string;
+  /** Offset inicial en el texto extraido, cuando el segmentador lo conoce. */
+  startOffset?: number;
+  /** Offset final (exclusivo) en el texto extraido. */
+  endOffset?: number;
+  /** Pagina de origen; null/desconocido hasta extraccion por pagina. */
+  pageNumber?: number | null;
 }
 
 export interface ClauseSegmenter {
