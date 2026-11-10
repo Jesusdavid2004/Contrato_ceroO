@@ -12,6 +12,9 @@ import type { DownloadObjectionLetterPdfUseCase } from '../../application/use-ca
 import type { UpdateObjectionLetterUseCase } from '../../application/use-cases/UpdateObjectionLetterUseCase';
 import type { FileStorage } from '../../domain/services/InfrastructureInterfaces';
 import type { AnalysisEventPublisher } from '../../domain/services/AnalysisEventPublisher';
+import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
+import { stagingUriFor } from '../../domain/services/AnalysisStaging';
+import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
 
 const upload = multer({
@@ -28,6 +31,7 @@ export function createContractRouter(deps: {
   fileStorage?: FileStorage;
   analysisWorker?: InProcessAnalysisWorker;
   eventPublisher?: AnalysisEventPublisher;
+  staging?: AnalysisStaging;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -82,12 +86,33 @@ export function createContractRouter(deps: {
         }
         if (deps.analysisWorker) {
           const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
-          deps.analysisWorker.enqueue({
-            contractId: result.id,
-            userId: req.user!.id,
-            fileBuffer: validatedFile.buffer,
-            mimeType: validatedFile.detectedMime,
-          });
+          if (deps.staging) {
+            try {
+              await deps.staging.stage(
+                result.id,
+                { buffer: validatedFile.buffer, mimeType: validatedFile.detectedMime },
+                config.STAGING_TTL_MS,
+              );
+            } catch (error) {
+              logger.error('Analysis staging failed', {
+                contractId: result.id,
+                errorName: error instanceof Error ? error.name : 'UnknownError',
+              });
+            }
+            deps.analysisWorker.enqueue({
+              contractId: result.id,
+              userId: req.user!.id,
+              stagingKey: result.id,
+              mimeType: validatedFile.detectedMime,
+            });
+          } else {
+            deps.analysisWorker.enqueue({
+              contractId: result.id,
+              userId: req.user!.id,
+              fileBuffer: validatedFile.buffer,
+              mimeType: validatedFile.detectedMime,
+            });
+          }
         }
 
         res.status(201).json(result);
@@ -163,6 +188,13 @@ export function createContractRouter(deps: {
           await deps.fileStorage.delete(contract.storageUri);
         }
         await deps.fileStorage.delete(contractId);
+      }
+      if (deps.staging) {
+        try {
+          await deps.staging.remove(stagingUriFor(contractId));
+        } catch {
+          // El borrado del contrato no depende del staging.
+        }
       }
       await deps.contractRepository.delete(contractId);
       res.status(200).json({ message: 'Contract deleted' });

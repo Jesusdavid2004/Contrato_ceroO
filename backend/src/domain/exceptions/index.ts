@@ -41,6 +41,16 @@ export class TextExtractionFailedError extends DomainError {
   }
 }
 
+export class StagingExpiredError extends DomainError {
+  constructor() {
+    super(
+      'Staged analysis bytes expired before the worker read them; upload the contract again.',
+      'errors.staging_expired',
+      422,
+    );
+  }
+}
+
 export class ContractNotFoundError extends DomainError {
   constructor(contractId: string) {
     super(`Contract not found: ${contractId}`, 'errors.contract_not_found', 404, { contractId });

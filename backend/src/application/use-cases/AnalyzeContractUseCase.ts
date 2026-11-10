@@ -6,6 +6,7 @@ import {
   ContractNotFoundError,
   ContractOwnershipError,
   DailyQuotaExceededError,
+  StagingExpiredError,
   TextExtractionFailedError,
 } from '../../domain/exceptions/index';
 import { DomainError } from '../../domain/exceptions/DomainError';
@@ -20,6 +21,8 @@ import type {
   AnalysisEvent,
   AnalysisEventPublisher,
 } from '../../domain/services/AnalysisEventPublisher';
+import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
+import { stagingUriFor } from '../../domain/services/AnalysisStaging';
 import { Contract } from '../../domain/entities/Contract';
 import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
@@ -30,7 +33,10 @@ const PROMPT_VERSION = 'clause-classification-v2';
 export interface AnalyzeContractInput {
   contractId: string;
   userId: string;
-  fileBuffer: Buffer;
+  /** Bytes directos (pruebas y compatibilidad); preferir stagingKey en rutas. */
+  fileBuffer?: Buffer;
+  /** Llave de staging (`staging:<contractId>`); sobrevive reinicios con TTL. */
+  stagingKey?: string;
   mimeType: string;
 }
 
@@ -45,6 +51,7 @@ export class AnalyzeContractUseCase {
     private readonly clock: () => Date = () => new Date(),
     private readonly legalContextProvider?: LegalContextProvider,
     private readonly eventPublisher?: AnalysisEventPublisher,
+    private readonly staging?: AnalysisStaging,
   ) {}
 
   public async execute(input: AnalyzeContractInput): Promise<void> {
@@ -55,6 +62,7 @@ export class AnalyzeContractUseCase {
     const now = this.clock();
     const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     try {
+      const { fileBuffer, mimeType: stagedMimeType } = await this.resolveInputBytes(input);
       const reserved = await this.usageRepository.reserveDailyAnalysis(
         input.userId,
         config.DAILY_AI_QUOTA,
@@ -72,7 +80,7 @@ export class AnalyzeContractUseCase {
         payload: { status: 'ANALYZING' },
       });
 
-      const text = await this.textExtractor.extractText(input.fileBuffer, input.mimeType);
+      const text = await this.textExtractor.extractText(fileBuffer, stagedMimeType);
       const segmented = await this.clauseSegmenter.segment(text);
       if (segmented.length === 0) {
         throw new TextExtractionFailedError('No contract clauses could be segmented.');
@@ -160,6 +168,7 @@ export class AnalyzeContractUseCase {
         type: 'completed',
         payload: { status: 'READY', globalRiskScore: contract.globalRiskScore },
       });
+      await this.cleanupStaging(input.stagingKey);
     } catch (error) {
       contract.markFailed(error instanceof DomainError ? error.messageKey : 'errors.analysis_failed');
       await this.contractRepository.save(contract);
@@ -170,7 +179,32 @@ export class AnalyzeContractUseCase {
         type: 'failed',
         payload: { status: 'FAILED', failureMessageKey: contract.failureReason },
       });
+      await this.cleanupStaging(input.stagingKey);
       throw error;
+    }
+  }
+
+  /** Resuelve los bytes: directos si vienen, o del staging con TTL. */
+  private async resolveInputBytes(input: AnalyzeContractInput): Promise<{ fileBuffer: Buffer; mimeType: string }> {
+    if (input.fileBuffer) {
+      return { fileBuffer: input.fileBuffer, mimeType: input.mimeType };
+    }
+    if (input.stagingKey && this.staging) {
+      const staged = await this.staging.fetch(stagingUriFor(input.stagingKey));
+      if (staged) return { fileBuffer: staged.buffer, mimeType: staged.mimeType };
+    }
+    throw new StagingExpiredError();
+  }
+
+  /** Borra el staging al terminar; nunca rompe el resultado. */
+  private async cleanupStaging(stagingKey?: string): Promise<void> {
+    if (!stagingKey || !this.staging) return;
+    try {
+      await this.staging.remove(stagingUriFor(stagingKey));
+    } catch (error) {
+      logger.error('Staging cleanup failed', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
     }
   }
 
@@ -178,8 +212,7 @@ export class AnalyzeContractUseCase {
    * Avisa el avance sin bloquear el analisis: si el bus falla se registra
    * y el trabajo continua; el estado definitivo ya quedo persistido.
    */
-  private async publishEvent(event: Omit<AnalysisEvent, 'occurredAt'>): Promise<void> {
-    if (!this.eventPublisher) return;
+  private async publishEvent(event: Omit<AnalysisEvent, 'occurredAt'>): Promise<void> {    if (!this.eventPublisher) return;
     try {
       await this.eventPublisher.publish({ ...event, occurredAt: this.clock() });
     } catch (error) {

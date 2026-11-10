@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'node:crypto';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -51,6 +52,9 @@ import { RealtimeTicketStore } from './presentation/realtime/realtimeTickets';
 import { RealtimeServer } from './presentation/realtime/realtimeServer';
 import { registerRealtimeContext } from './presentation/realtime/realtimeContext';
 import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnalysisEventBus';
+import { EncryptedFileStaging } from './infrastructure/staging/EncryptedFileStaging';
+import { InMemoryStaging } from './infrastructure/staging/InMemoryStaging';
+import type { AnalysisStaging } from './domain/services/AnalysisStaging';
 import {
   PostgresAnalysisEventOutbox,
   startOutboxPublisher,
@@ -82,6 +86,16 @@ export function createApp(options?: { inMemory?: boolean }) {
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
   const fileStorage = new LocalFileStorage();
+  const analysisStaging: AnalysisStaging = isInMemory
+    ? new InMemoryStaging()
+    : new EncryptedFileStaging(config.STAGING_DIR, resolveStagingKey().key);
+  void analysisStaging.purgeExpired().then((purged) => {
+    if (purged > 0) logger.info('Purged expired staged analyses', { purged });
+  }).catch((error: unknown) => {
+    logger.error('Staging purge failed', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+  });
   // Hybrid AI wiring: the fast tier classifies every clause with the local
   // model; the smart tier (low-confidence rechecks + letters) uses the free
   // Gemini provider when GEMINI_API_KEY is set, otherwise the local model.
@@ -157,6 +171,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     undefined,
     legalContextProvider,
     analysisEventPublisher,
+    analysisStaging,
   );
   const analysisWorker = new InProcessAnalysisWorker(analysisUseCase);
 
@@ -179,7 +194,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const registerUserUseCase = new RegisterUserUseCase(userRepository);
   const loginUseCase = new LoginUseCase(userRepository);
   const refreshSessionUseCase = new RefreshSessionUseCase(userRepository);
-  const deleteAccountUseCase = new DeleteAccountUseCase(userRepository, contractRepository, fileStorage);
+  const deleteAccountUseCase = new DeleteAccountUseCase(userRepository, contractRepository, fileStorage, analysisStaging);
   const uploadContractUseCase = new UploadContractUseCase(contractRepository, fileStorage);
   const generateObjectionLetterUseCase = new GenerateObjectionLetterUseCase(
     contractRepository,
@@ -246,6 +261,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     fileStorage,
     analysisWorker,
     eventPublisher: analysisEventPublisher,
+    staging: analysisStaging,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,
@@ -272,6 +288,18 @@ export function createApp(options?: { inMemory?: boolean }) {
   app.use(errorHandler);
 
   return app;
+}
+
+function resolveStagingKey(): { key: Buffer; ephemeral: boolean } {
+  if (config.STAGING_KEY) {
+    const key = Buffer.from(config.STAGING_KEY, 'base64');
+    if (key.length !== 32) {
+      throw new Error('STAGING_KEY must decode to 32 bytes.');
+    }
+    return { key, ephemeral: false };
+  }
+  logger.warn('STAGING_KEY not set: ephemeral staging key for development only');
+  return { key: crypto.randomBytes(32), ephemeral: true };
 }
 
 function loadOpenApiSpec(): Record<string, unknown> | null {
