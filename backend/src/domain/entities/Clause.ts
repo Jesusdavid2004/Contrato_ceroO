@@ -1,5 +1,13 @@
 import type { RiskLevel } from '../value-objects/RiskLevel';
 
+/**
+ * Confianza minima para no pedir revision: por debajo, el modelo sigue
+ * incierto incluso tras el rechequeo (misma politica del rechequeo smart).
+ * Separado del nivel de riesgo: una alerta puede ser grave y segura, o leve
+ * e incierta.
+ */
+export const REQUIRES_REVIEW_CONFIDENCE = 0.6;
+
 export interface LegalBasisReference {
   reference: string;
   summary: string;
@@ -28,6 +36,8 @@ export interface ClauseProps {
   startOffset?: number | null;
   /** Offset final (exclusivo) en el texto extraido. */
   endOffset?: number | null;
+  /** Revision humana sugerida; por defecto, incertidumbre residual. */
+  requiresReview?: boolean;
 }
 
 export class Clause {
@@ -44,6 +54,7 @@ export class Clause {
   public readonly pageNumber: number | null;
   public readonly startOffset: number | null;
   public readonly endOffset: number | null;
+  public readonly requiresReview: boolean;
 
   constructor(props: ClauseProps) {
     this.id = props.id;
@@ -59,6 +70,7 @@ export class Clause {
     this.pageNumber = props.pageNumber ?? null;
     this.startOffset = props.startOffset ?? null;
     this.endOffset = props.endOffset ?? null;
+    this.requiresReview = props.requiresReview ?? props.confidence < REQUIRES_REVIEW_CONFIDENCE;
   }
 
   public isFlagged(): boolean {
@@ -79,6 +91,7 @@ export class Clause {
       page_number: this.pageNumber,
       start_offset: this.startOffset,
       end_offset: this.endOffset,
+      requires_review: this.requiresReview,
     };
   }
 }

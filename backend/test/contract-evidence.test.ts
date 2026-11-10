@@ -6,6 +6,7 @@ import { InMemoryAIUsageRepository } from '../src/infrastructure/repositories/AI
 import { AnalyzeContractUseCase } from '../src/application/use-cases/AnalyzeContractUseCase';
 import { Contract } from '../src/domain/entities/Contract';
 import { Clause } from '../src/domain/entities/Clause';
+import { REQUIRES_REVIEW_CONFIDENCE } from '../src/domain/entities/Clause';
 
 const TEXT = [
   'CONTRATO DE ARRENDAMIENTO',
@@ -13,6 +14,76 @@ const TEXT = [
   'CLÁUSULA 2. Precio: el canon mensual se paga dentro de los cinco primeros dias.',
   'CLÁUSULA 3. Duracion: doce meses contados desde la firma de este documento.',
 ].join('\n');
+
+describe('Requires review', () => {
+  function baseClause(confidence: number, requiresReview?: boolean): Clause {
+    return new Clause({
+      id: 'c1',
+      orderIndex: 1,
+      originalText: 'texto',
+      riskLevel: 'high',
+      confidence,
+      plainExplanation: 'explicacion',
+      requiresReview,
+    });
+  }
+
+  it('separa incertidumbre de riesgo: grave e incierta pide revision', () => {
+    expect(REQUIRES_REVIEW_CONFIDENCE).toBe(0.6);
+    expect(baseClause(0.4).requiresReview).toBe(true);
+    expect(baseClause(0.9).requiresReview).toBe(false);
+    expect(baseClause(0.9, true).requiresReview).toBe(true);
+    expect(baseClause(0.4).toJSON()).toMatchObject({ requires_review: true });
+  });
+
+  it('el analisis conserva la incertidumbre residual', async () => {
+    const repository = new InMemoryContractRepository();
+    const contract = new Contract({
+      id: 'contract-review',
+      ownerId: 'user-1',
+      title: 'Lease',
+      fileName: 'lease.pdf',
+      contractType: 'LEASE',
+      jurisdiction: 'CO',
+      locale: 'es',
+    });
+    await repository.save(contract);
+    const useCase = new AnalyzeContractUseCase(
+      repository,
+      { extractText: async () => TEXT },
+      new RegexClauseSegmenter(),
+      {
+        classifyClauses: async (input) => ({
+          clauses: input.clauses.map((item) => ({
+            clause_id: item.id,
+            risk_level: 'medium' as const,
+            confidence: 0.4,
+            plain_explanation: 'Dudoso.',
+            why_risky: null,
+            legal_basis: [],
+            suggested_change: null,
+          })),
+          usage: { model: 'test', inputTokens: 1, outputTokens: 1 },
+        }),
+        generateObjectionLetter: async () => '',
+      },
+      new InMemoryAIUsageRepository(),
+      new InMemoryAIClassificationCache(),
+    );
+
+    await useCase.execute({
+      contractId: contract.id,
+      userId: contract.ownerId,
+      fileBuffer: Buffer.from('test'),
+      mimeType: 'application/pdf',
+    });
+
+    const result = await repository.findById(contract.id);
+    expect(result?.status).toBe('READY');
+    expect(result?.clauses.length).toBeGreaterThan(0);
+    expect(result?.clauses.every((clause) => clause.requiresReview)).toBe(true);
+  });
+});
 
 describe('Clause evidence (offsets)', () => {
   it('regex headings report offsets that locate the clause text', async () => {

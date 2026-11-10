@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Clause, type LegalBasisReference } from '../../domain/entities/Clause';
+import { Clause, REQUIRES_REVIEW_CONFIDENCE, type LegalBasisReference } from '../../domain/entities/Clause';
 import type { ContractRepository } from '../../domain/repositories/ContractRepository';
 import type { AIUsageRepository } from '../../domain/repositories/AIUsageRepository';
 import {
@@ -31,7 +31,7 @@ import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
 
 const MAX_CLAUSES_PER_BATCH = 8;
-const SMART_RECHECK_CONFIDENCE = 0.6;
+const SMART_RECHECK_CONFIDENCE = REQUIRES_REVIEW_CONFIDENCE;
 const PROMPT_VERSION = 'clause-classification-v2';
 export interface AnalyzeContractInput {
   contractId: string;

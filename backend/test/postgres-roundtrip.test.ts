@@ -42,7 +42,7 @@ describe.runIf(PG_URL)('PostgreSQL roundtrips (dev DB)', () => {
     const res = await pool.query(
       `SELECT table_name, column_name FROM information_schema.columns
        WHERE table_name IN ('analysis_event_outbox', 'contract_facts', 'clause_proposals', 'objection_letters', 'contracts', 'clauses')
-       AND column_name IN ('sequence', 'coverage_status', 'start_offset', 'value', 'proposed_text', 'recipient', 'user_role', 'page_number')`,
+       AND column_name IN ('sequence', 'coverage_status', 'start_offset', 'value', 'proposed_text', 'recipient', 'user_role', 'page_number', 'requires_review')`,
     );
     const found = new Set(res.rows.map((row) => `${row.table_name}.${row.column_name}`));
     for (const expected of [
@@ -51,6 +51,7 @@ describe.runIf(PG_URL)('PostgreSQL roundtrips (dev DB)', () => {
       'contracts.user_role',
       'clauses.start_offset',
       'clauses.page_number',
+      'clauses.requires_review',
       'contract_facts.value',
       'clause_proposals.proposed_text',
       'objection_letters.recipient',
@@ -80,6 +81,14 @@ describe.runIf(PG_URL)('PostgreSQL roundtrips (dev DB)', () => {
           startOffset: 0,
           endOffset: 24,
         }),
+        new Clause({
+          id: 'pg-clause-2',
+          orderIndex: 2,
+          originalText: 'Texto dudoso.',
+          riskLevel: 'low',
+          confidence: 0.4,
+          plainExplanation: 'Incierto.',
+        }),
       ],
     });
     contract.markReady();
@@ -89,10 +98,12 @@ describe.runIf(PG_URL)('PostgreSQL roundtrips (dev DB)', () => {
     expect(loaded?.userRole).toBe('tenant');
     expect(loaded?.coverageStatus).toBe('experimental');
     expect(loaded?.coverageRulesVersion).toBeTruthy();
-    expect(loaded?.clauses).toHaveLength(1);
+    expect(loaded?.clauses).toHaveLength(2);
     expect(loaded?.clauses[0].startOffset).toBe(0);
     expect(loaded?.clauses[0].endOffset).toBe(24);
     expect(loaded?.clauses[0].pageNumber).toBeNull();
+    expect(loaded?.clauses[0].requiresReview).toBe(false);
+    expect(loaded?.clauses[1].requiresReview).toBe(true);
   });
 
   it('guarda, lee y actualiza datos', async () => {

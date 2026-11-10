@@ -796,6 +796,9 @@ components:
           type: [integer, "null"]
         end_offset:
           type: [integer, "null"]
+        requires_review:
+          type: boolean
+          description: True when model confidence stays below 0.6 after recheck; independent of risk level.
     Fact:
       type: object
       required: [key, value, status, evidence_clause_id, evidence_quote]
