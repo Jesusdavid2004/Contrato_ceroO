@@ -48,6 +48,14 @@ import {
   ClearAssistantConversationUseCase,
 } from './application/use-cases/AssistantHistoryUseCases';
 import { GetContractGuidanceUseCase } from './application/use-cases/GetContractGuidanceUseCase';
+import { RefreshLegalSourcesUseCase } from './application/use-cases/RefreshLegalSourcesUseCase';
+import { GetLegalRadarStatusUseCase, ListLegalUpdatesUseCase } from './application/use-cases/LegalRadarQueries';
+import type { LegalSourceDefinition } from './domain/services/LegalSources';
+import { HttpLegalSourceFetcher } from './infrastructure/legal/HttpLegalSourceFetcher';
+import { LegalRadarScheduler } from './infrastructure/legal/LegalRadarScheduler';
+import { loadLegalSourceCatalogSync } from './infrastructure/legal/sourceCatalogLoader';
+import { resolveCorpusDir } from './infrastructure/legal/corpusLoader';
+import { createLegalRadarRouter } from './presentation/routes/legalRadarRoutes';
 import { createAssistantRouter } from './presentation/routes/assistantRoutes';
 import { PostgresLegalContextProvider } from './infrastructure/services/PostgresLegalContextProvider';
 
@@ -209,6 +217,25 @@ export function createApp(options?: { inMemory?: boolean }) {
       legalUpdatesRepository,
     ),
   });
+  const legalRadarSources = isInMemory ? [] : loadRadarSources();
+  const legalRadarRouter = createLegalRadarRouter({
+    listUpdatesUseCase: new ListLegalUpdatesUseCase(
+      legalUpdatesRepository,
+      [...new Set(['arriendo', 'consumo', ...legalRadarSources.map((source) => source.tema)])],
+    ),
+    statusUseCase: new GetLegalRadarStatusUseCase(legalRadarSources, legalUpdatesRepository),
+  });
+  if (config.LEGAL_RADAR_ENABLED && legalRadarSources.length > 0) {
+    new LegalRadarScheduler(
+      new RefreshLegalSourcesUseCase(
+        legalRadarSources,
+        new HttpLegalSourceFetcher(),
+        legalUpdatesRepository,
+        new PostgresLegalProvisionRepository(pool),
+      ),
+      config.LEGAL_RADAR_INTERVAL_MINUTES,
+    ).start();
+  }
   const ticketStore = new RealtimeTicketStore();
   const realtimeServer = new RealtimeServer(
     ticketStore,
@@ -384,6 +411,8 @@ export function createApp(options?: { inMemory?: boolean }) {
   app.use('/api/v1/contracts', assistantRouter);
   app.use('/api/v1/contracts', contractRouter);
   app.use('/api/v1/realtime', realtimeRouter);
+  app.use('/api/v1/legal', legalRadarRouter);
+  app.use('/api/legal', legalRadarRouter);
 
   // Legacy route aliases for backwards compatibility
   app.use('/api/auth', authRouter);
@@ -395,6 +424,17 @@ export function createApp(options?: { inMemory?: boolean }) {
   app.use(errorHandler);
 
   return app;
+}
+
+function loadRadarSources(): LegalSourceDefinition[] {
+  try {
+    return loadLegalSourceCatalogSync(resolveCorpusDir());
+  } catch (error) {
+    logger.warn('Legal radar disabled: source catalog could not be loaded', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+    return [];
+  }
 }
 
 function resolveStagingKey(): { key: Buffer; ephemeral: boolean } {

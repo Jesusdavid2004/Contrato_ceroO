@@ -30,6 +30,11 @@ const envSchema = z.object({
   GEMINI_MODEL_ASSISTANT: z.string().default('gemini-3.5-flash'),
   AI_MAX_TOKENS_ASSISTANT: z.coerce.number().int().positive().default(900),
   ASSISTANT_DAILY_MESSAGES: z.coerce.number().int().positive().default(60),
+  LEGAL_RADAR_ENABLED: z
+    .string()
+    .optional()
+    .transform((val) => val !== 'false'),
+  LEGAL_RADAR_INTERVAL_MINUTES: z.coerce.number().int().min(5).default(60),
   AI_MAX_TOKENS_CLASSIFICATION: z.coerce.number().int().positive().default(8192),
   AI_REQUEST_TIMEOUT_MS: z.coerce.number().int().positive().default(30000),
   DAILY_AI_QUOTA: z.coerce.number().int().positive().default(20),
