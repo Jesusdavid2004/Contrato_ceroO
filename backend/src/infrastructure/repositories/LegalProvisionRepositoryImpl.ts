@@ -44,6 +44,15 @@ export class PostgresLegalProvisionRepository implements LegalProvisionRepositor
     }));
   }
 
+  public async markSourcesVerified(sourceUrls: readonly string[], verifiedOn: string): Promise<number> {
+    if (sourceUrls.length === 0) return 0;
+    const result = await this.pool.query(
+      'UPDATE legal_provisions SET fuente_verificada_en = $2 WHERE source_url = ANY($1::text[])',
+      [sourceUrls, verifiedOn],
+    );
+    return result.rowCount ?? 0;
+  }
+
   public async saveMany(provisions: LegalProvision[]): Promise<void> {
     if (provisions.length === 0) return;
     const client = await this.pool.connect();

@@ -22,6 +22,7 @@ function harness() {
     {
       findTopRelevant: async () => [provision('arr-1', 'arriendo'), provision('con-1', 'consumo')],
       saveMany: async () => undefined,
+      markSourcesVerified: async () => 0,
       countByJurisdiction: async () => 2,
     },
     {
