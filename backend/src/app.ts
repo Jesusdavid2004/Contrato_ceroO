@@ -194,7 +194,7 @@ export function createApp(options?: { inMemory?: boolean }) {
       apiKey: config.GEMINI_API_KEY,
       model: config.GEMINI_MODEL_ASSISTANT,
       maxTokens: config.AI_MAX_TOKENS_ASSISTANT,
-      timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
+      timeoutMs: config.AI_ASSISTANT_TIMEOUT_MS,
     })
     : new ExtractiveAssistantProvider();
   const askAssistantUseCase = new AskAssistantUseCase(

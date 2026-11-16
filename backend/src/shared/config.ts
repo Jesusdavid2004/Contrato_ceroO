@@ -28,6 +28,7 @@ const envSchema = z.object({
   GEMINI_MODEL_FAST: z.string().default('gemini-3.5-flash-lite'),
   GEMINI_MODEL_SMART: z.string().default('gemini-3.5-flash'),
   GEMINI_MODEL_ASSISTANT: z.string().default('gemini-3.5-flash'),
+  AI_ASSISTANT_TIMEOUT_MS: z.coerce.number().int().positive().default(60000),
   AI_MAX_TOKENS_ASSISTANT: z.coerce.number().int().positive().default(900),
   ASSISTANT_DAILY_MESSAGES: z.coerce.number().int().positive().default(60),
   LEGAL_RADAR_ENABLED: z

@@ -74,6 +74,13 @@ describe('AskAssistantUseCase', () => {
     expect(assistantMessage.grounded).toBe(true);
   });
 
+  it('accepts grouped citation markers from the model', async () => {
+    const { useCase } = await setup({ reply: 'El canon sube sin limite [S1, S99].' });
+    const { assistantMessage } = await useCase.execute(ask());
+    expect(assistantMessage.citations.map((citation) => citation.sourceId)).toEqual(['S1']);
+    expect(assistantMessage.content).toBe('El canon sube sin limite [S1].');
+  });
+
   it('marks an answer without valid citations as ungrounded', async () => {
     const { useCase } = await setup({ reply: 'No tengo informacion.' });
     const { assistantMessage } = await useCase.execute(ask());

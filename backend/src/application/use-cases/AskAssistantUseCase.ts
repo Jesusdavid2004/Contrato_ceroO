@@ -16,6 +16,7 @@ import type { LegalUpdatesRepository } from '../../domain/repositories/LegalUpda
 import {
   buildAssistantContext,
   extractValidCitations,
+  normalizeCitationMarkers,
   stripUnknownCitations,
   type AssistantSource,
   type LegalUpdateSummary,
@@ -103,7 +104,8 @@ export class AskAssistantUseCase {
       sources,
     }, input.onToken);
 
-    const citedIds = extractValidCitations(reply.text, sources);
+    const replyText = normalizeCitationMarkers(reply.text);
+    const citedIds = extractValidCitations(replyText, sources);
     const citations = sources.filter((source) => citedIds.includes(source.id)).map(toCitation);
     const userMessage = new AssistantMessage({
       id: `msg-${randomUUID()}`,
@@ -118,7 +120,7 @@ export class AskAssistantUseCase {
       contractId: contract.id,
       userId: input.userId,
       role: 'assistant',
-      content: stripUnknownCitations(reply.text, sources),
+      content: stripUnknownCitations(replyText, sources),
       citations,
       grounded: citations.length > 0,
       createdAt: new Date(now.getTime() + 1),

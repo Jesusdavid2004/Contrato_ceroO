@@ -4,6 +4,7 @@ import {
   buildAssistantContext,
   extractValidCitations,
   stripUnknownCitations,
+  normalizeCitationMarkers,
   MAX_CLAUSE_SOURCES,
 } from '../src/domain/services/AssistantContext';
 import {
@@ -82,6 +83,10 @@ describe('citation handling', () => {
 
   it('keeps only citations that exist in the context pack', () => {
     expect(extractValidCitations('Es asi [S1] y tambien [S9] y otra vez [S1].', sources)).toEqual(['S1']);
+  });
+
+  it('splits grouped markers into individual ones before validating them', () => {
+    expect(normalizeCitationMarkers('Dato [S1, S2] y [S3; S4] y [S5].')).toBe('Dato [S1][S2] y [S3][S4] y [S5].');
   });
 
   it('removes dangling markers from the visible reply', () => {

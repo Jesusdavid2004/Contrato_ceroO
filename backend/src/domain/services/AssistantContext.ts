@@ -144,7 +144,14 @@ function describeUpdate(update: LegalUpdateSummary): string {
 }
 
 const CITATION_PATTERN = /\[(S\d+)\]/g;
+const GROUPED_CITATION_PATTERN = /\[(S\d+(?:\s*[,;]\s*S\d+)+)\]/g;
 const REPEATED_SPACES = / {2,}/g;
+
+/** Rewrites grouped markers such as "[S1, S2]" into "[S1][S2]" so every citation is one parseable marker. */
+export function normalizeCitationMarkers(reply: string): string {
+  return reply.replace(GROUPED_CITATION_PATTERN, (_group, ids: string) =>
+    ids.split(/\s*[,;]\s*/).map((id) => `[${id}]`).join(''));
+}
 
 /** Source ids the model cited that actually exist in the pack, in first-seen order. */
 export function extractValidCitations(reply: string, sources: readonly AssistantSource[]): string[] {
