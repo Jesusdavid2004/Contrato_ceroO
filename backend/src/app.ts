@@ -32,6 +32,23 @@ import { AnalysisJobRunner } from './infrastructure/jobs/AnalysisJobRunner';
 import { PostgresAIUsageRepository, InMemoryAIUsageRepository } from './infrastructure/repositories/AIUsageRepositoryImpl';
 import { PostgresLegalProvisionRepository } from './infrastructure/repositories/LegalProvisionRepositoryImpl';
 import { HuggingFaceLocalEmbeddingProvider } from './infrastructure/ai/HuggingFaceLocalEmbeddingProvider';
+import { GeminiAssistantProvider } from './infrastructure/ai/GeminiAssistantProvider';
+import { ExtractiveAssistantProvider } from './infrastructure/ai/ExtractiveAssistantProvider';
+import {
+  PostgresAssistantConversationRepository,
+  InMemoryAssistantConversationRepository,
+} from './infrastructure/repositories/AssistantConversationRepositoryImpl';
+import {
+  PostgresLegalUpdatesRepository,
+  InMemoryLegalUpdatesRepository,
+} from './infrastructure/repositories/LegalUpdatesRepositoryImpl';
+import { AskAssistantUseCase } from './application/use-cases/AskAssistantUseCase';
+import {
+  ListAssistantMessagesUseCase,
+  ClearAssistantConversationUseCase,
+} from './application/use-cases/AssistantHistoryUseCases';
+import { GetContractGuidanceUseCase } from './application/use-cases/GetContractGuidanceUseCase';
+import { createAssistantRouter } from './presentation/routes/assistantRoutes';
 import { PostgresLegalContextProvider } from './infrastructure/services/PostgresLegalContextProvider';
 
 // Use Cases
@@ -158,6 +175,40 @@ export function createApp(options?: { inMemory?: boolean }) {
       new HuggingFaceLocalEmbeddingProvider(config.EMBEDDING_CACHE_DIR),
     )
     : undefined;
+  const conversationRepository = isInMemory
+    ? new InMemoryAssistantConversationRepository()
+    : new PostgresAssistantConversationRepository(pool);
+  const legalUpdatesRepository = isInMemory
+    ? new InMemoryLegalUpdatesRepository()
+    : new PostgresLegalUpdatesRepository(pool);
+  const assistantProvider = tiers.smart === 'gemini' && config.GEMINI_API_KEY
+    ? new GeminiAssistantProvider({
+      apiKey: config.GEMINI_API_KEY,
+      model: config.GEMINI_MODEL_ASSISTANT,
+      maxTokens: config.AI_MAX_TOKENS_ASSISTANT,
+      timeoutMs: config.AI_REQUEST_TIMEOUT_MS,
+    })
+    : new ExtractiveAssistantProvider();
+  const askAssistantUseCase = new AskAssistantUseCase(
+    contractRepository,
+    factsRepository,
+    conversationRepository,
+    assistantProvider,
+    config.ASSISTANT_DAILY_MESSAGES,
+    legalContextProvider,
+    legalUpdatesRepository,
+  );
+  const assistantRouter = createAssistantRouter({
+    askAssistantUseCase,
+    listMessagesUseCase: new ListAssistantMessagesUseCase(contractRepository, conversationRepository),
+    clearConversationUseCase: new ClearAssistantConversationUseCase(contractRepository, conversationRepository),
+    getGuidanceUseCase: new GetContractGuidanceUseCase(
+      contractRepository,
+      factsRepository,
+      remindersRepository,
+      legalUpdatesRepository,
+    ),
+  });
   const ticketStore = new RealtimeTicketStore();
   const realtimeServer = new RealtimeServer(
     ticketStore,
@@ -330,11 +381,13 @@ export function createApp(options?: { inMemory?: boolean }) {
 
   // Versioned v1 routes
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/contracts', assistantRouter);
   app.use('/api/v1/contracts', contractRouter);
   app.use('/api/v1/realtime', realtimeRouter);
 
   // Legacy route aliases for backwards compatibility
   app.use('/api/auth', authRouter);
+  app.use('/api/contracts', assistantRouter);
   app.use('/api/contracts', contractRouter);
   app.use('/api/realtime', realtimeRouter);
 
