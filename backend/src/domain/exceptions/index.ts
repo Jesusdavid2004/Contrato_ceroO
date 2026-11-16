@@ -216,3 +216,9 @@ export class AssistantQuotaExceededError extends DomainError {
     super(`Daily assistant message quota exceeded (${limit} messages per day).`, 'errors.assistant_quota_exceeded', 429, { limit });
   }
 }
+
+export class LegalSourceUnavailableError extends DomainError {
+  constructor(sourceUrl: string) {
+    super('A legal source could not be fetched.', 'errors.legal_source_unavailable', 502, { sourceUrl });
+  }
+}
