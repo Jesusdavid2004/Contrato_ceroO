@@ -6,7 +6,7 @@ import type {
 } from '../../application/use-cases/AssistantHistoryUseCases';
 import type { GetContractGuidanceUseCase } from '../../application/use-cases/GetContractGuidanceUseCase';
 import { requireAuth } from '../middleware/authMiddleware';
-import { aiIpLimiter, aiUserLimiter } from '../middleware/rateLimiter';
+import { assistantIpLimiter, assistantUserLimiter } from '../middleware/rateLimiter';
 import { validateBody } from '../middleware/validationMiddleware';
 import { askAssistantBodySchema } from '../schemas/assistantSchemas';
 import { openSse, sendSse, sendSseError, wantsEventStream } from '../utils/serverSentEvents';
@@ -25,8 +25,8 @@ export function createAssistantRouter(deps: AssistantRouterDeps): Router {
   router.post(
     '/:id/assistant/messages',
     requireAuth,
-    aiIpLimiter,
-    aiUserLimiter,
+    assistantIpLimiter,
+    assistantUserLimiter,
     validateBody(askAssistantBodySchema),
     async (req: Request, res: Response, next: NextFunction) => {
       const input = { contractId: String(req.params.id), userId: req.user!.id, question: req.body.question as string };
