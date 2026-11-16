@@ -20,6 +20,8 @@ const GEMINI_STREAM_URL = 'https://generativelanguage.googleapis.com/v1beta/mode
 const RETRY_STATUSES = new Set([429, 503]);
 const RETRY_DELAY_MS = 2500;
 const SSE_DATA_PREFIX = 'data:';
+const MAX_TOKENS_FINISH_REASON = 'MAX_TOKENS';
+const ANSWER_TEMPERATURE = 0.2;
 
 export interface GeminiAssistantOptions {
   apiKey: string;
@@ -32,6 +34,7 @@ export interface GeminiAssistantOptions {
 
 const streamChunkSchema = z.object({
   candidates: z.array(z.object({
+    finishReason: z.string().optional(),
     content: z.object({ parts: z.array(z.object({ text: z.string().optional() })).optional() }).optional(),
   })).optional(),
   usageMetadata: z.object({
@@ -60,6 +63,7 @@ export class GeminiAssistantProvider implements AssistantProvider {
     let text = '';
     let inputTokens = 0;
     let outputTokens = 0;
+    let truncated = false;
 
     for await (const data of readSseData(response)) {
       const chunk = parseChunk(data);
@@ -71,11 +75,13 @@ export class GeminiAssistantProvider implements AssistantProvider {
         text += piece;
         onToken?.(piece);
       }
+      truncated = truncated || (chunk.candidates ?? []).some((candidate) => candidate.finishReason === MAX_TOKENS_FINISH_REASON);
       inputTokens = chunk.usageMetadata?.promptTokenCount ?? inputTokens;
       outputTokens = chunk.usageMetadata?.candidatesTokenCount ?? outputTokens;
     }
 
     if (!text.trim()) throw new AIResponseInvalidError({ reason: 'The assistant response was empty.' });
+    if (truncated) logger.warn('Assistant reply hit the token limit', { model: this.options.model, maxTokens: this.options.maxTokens });
     logger.info('Assistant reply generated', {
       promptVersion: ASSISTANT_REPLY_PROMPT_VERSION,
       model: this.options.model,
@@ -90,7 +96,12 @@ export class GeminiAssistantProvider implements AssistantProvider {
     const body = {
       system_instruction: { parts: [{ text: buildAssistantSystemPrompt(localeName(request.locale)) }] },
       contents: [{ role: 'user', parts: [{ text: buildAssistantUserPrompt(request) }] }],
-      generationConfig: { maxOutputTokens: this.options.maxTokens, temperature: 0.2 },
+      generationConfig: {
+        maxOutputTokens: this.options.maxTokens,
+        temperature: ANSWER_TEMPERATURE,
+        // Reasoning tokens count against maxOutputTokens and silently truncate the visible answer.
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     };
     let response: Response;
     try {

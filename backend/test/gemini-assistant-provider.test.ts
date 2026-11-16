@@ -52,6 +52,14 @@ describe('GeminiAssistantProvider', () => {
     expect((init.headers as Record<string, string>)['x-goog-api-key']).toBe('k');
   });
 
+  it('disables reasoning tokens so the visible answer is never truncated by them', async () => {
+    const fetchImpl = vi.fn(async () => sseResponse([chunk('ok')]));
+    await provider(fetchImpl as unknown as typeof fetch).reply(request);
+    const [, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as { generationConfig: { thinkingConfig: { thinkingBudget: number } } };
+    expect(body.generationConfig.thinkingConfig.thinkingBudget).toBe(0);
+  });
+
   it('maps an HTTP failure to AIProviderUnavailableError without leaking the status body', async () => {
     const fetchImpl = vi.fn(async () => new Response('secret provider error', { status: 500 }));
     await expect(provider(fetchImpl as unknown as typeof fetch).reply(request)).rejects.toBeInstanceOf(AIProviderUnavailableError);
