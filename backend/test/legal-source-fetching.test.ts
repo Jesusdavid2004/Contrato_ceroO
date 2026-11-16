@@ -5,6 +5,8 @@ import path from 'node:path';
 import {
   HttpLegalSourceFetcher,
   htmlToText,
+  loadExtraCaCertificates,
+  type HttpGet,
   parseRssEntries,
 } from '../src/infrastructure/legal/HttpLegalSourceFetcher';
 import { loadLegalSourceCatalog } from '../src/infrastructure/legal/sourceCatalogLoader';
@@ -36,26 +38,39 @@ describe('parseRssEntries', () => {
 });
 
 describe('HttpLegalSourceFetcher', () => {
-  const okFetch = (body: string) => vi.fn(async () => new Response(body, { status: 200 })) as unknown as typeof fetch;
+  const respond = (body: string, status = 200): HttpGet =>
+    vi.fn(async () => ({ status, body: new TextEncoder().encode(body) }));
 
   it('returns visible page text', async () => {
-    const fetcher = new HttpLegalSourceFetcher(okFetch('<p>Hola</p>'));
+    const fetcher = new HttpLegalSourceFetcher(respond('<p>Hola</p>'));
     expect(await fetcher.fetchPageText('https://example.test/p')).toBe('Hola');
   });
 
+  it('parses feed entries from the downloaded xml', async () => {
+    const fetcher = new HttpLegalSourceFetcher(respond(RSS));
+    expect(await fetcher.fetchFeedEntries('https://example.test/rss')).toHaveLength(2);
+  });
+
   it('refuses non-https urls without calling the network', async () => {
-    const impl = okFetch('x');
-    await expect(new HttpLegalSourceFetcher(impl).fetchPageText('http://example.test')).rejects.toBeInstanceOf(LegalSourceUnavailableError);
-    expect(impl).not.toHaveBeenCalled();
+    const httpGet = respond('x');
+    await expect(new HttpLegalSourceFetcher(httpGet).fetchPageText('http://example.test')).rejects.toBeInstanceOf(LegalSourceUnavailableError);
+    expect(httpGet).not.toHaveBeenCalled();
   });
 
   it('maps network errors, error statuses and empty bodies to a typed error', async () => {
-    const failing = vi.fn(async () => { throw new TypeError('down'); }) as unknown as typeof fetch;
-    const notFound = vi.fn(async () => new Response('nope', { status: 404 })) as unknown as typeof fetch;
-    const empty = okFetch('');
-    for (const impl of [failing, notFound, empty]) {
-      await expect(new HttpLegalSourceFetcher(impl).fetchPageText('https://example.test')).rejects.toBeInstanceOf(LegalSourceUnavailableError);
+    const failing: HttpGet = vi.fn(async () => { throw new Error('down'); });
+    for (const httpGet of [failing, respond('nope', 404), respond('')]) {
+      await expect(new HttpLegalSourceFetcher(httpGet).fetchPageText('https://example.test')).rejects.toBeInstanceOf(LegalSourceUnavailableError);
     }
+  });
+});
+
+describe('loadExtraCaCertificates', () => {
+  it('loads the shipped public CA chain and returns nothing for a directory without one', () => {
+    const certificates = loadExtraCaCertificates(resolveCorpusDir());
+    expect(certificates.length).toBeGreaterThan(0);
+    expect(certificates[0]).toContain('BEGIN CERTIFICATE');
+    expect(loadExtraCaCertificates(os.tmpdir())).toEqual([]);
   });
 });
 

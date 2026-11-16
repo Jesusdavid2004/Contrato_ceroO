@@ -51,7 +51,7 @@ import { GetContractGuidanceUseCase } from './application/use-cases/GetContractG
 import { RefreshLegalSourcesUseCase } from './application/use-cases/RefreshLegalSourcesUseCase';
 import { GetLegalRadarStatusUseCase, ListLegalUpdatesUseCase } from './application/use-cases/LegalRadarQueries';
 import type { LegalSourceDefinition } from './domain/services/LegalSources';
-import { HttpLegalSourceFetcher } from './infrastructure/legal/HttpLegalSourceFetcher';
+import { HttpLegalSourceFetcher, createNodeHttpsGet, loadExtraCaCertificates } from './infrastructure/legal/HttpLegalSourceFetcher';
 import { LegalRadarScheduler } from './infrastructure/legal/LegalRadarScheduler';
 import { loadLegalSourceCatalogSync } from './infrastructure/legal/sourceCatalogLoader';
 import { resolveCorpusDir } from './infrastructure/legal/corpusLoader';
@@ -229,7 +229,7 @@ export function createApp(options?: { inMemory?: boolean }) {
     new LegalRadarScheduler(
       new RefreshLegalSourcesUseCase(
         legalRadarSources,
-        new HttpLegalSourceFetcher(),
+        new HttpLegalSourceFetcher(createNodeHttpsGet(loadExtraCaCertificates(resolveCorpusDir()))),
         legalUpdatesRepository,
         new PostgresLegalProvisionRepository(pool),
       ),
