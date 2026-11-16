@@ -39,6 +39,7 @@ async function guidanceSetup(status: 'READY' | 'ANALYZING' = 'READY', updateCoun
     saveIfNew: async () => true,
     listRecent: async () => updates,
     getSourceState: async () => null,
+    listSourceStates: async () => [],
     saveSourceState: async () => undefined,
   };
   return new GetContractGuidanceUseCase(

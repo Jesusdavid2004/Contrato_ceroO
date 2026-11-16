@@ -66,6 +66,17 @@ export class PostgresLegalUpdatesRepository implements LegalUpdatesRepository {
     return { sourceId: row.source_id, contentHash: row.content_hash, checkedAt: new Date(row.checked_at) };
   }
 
+  public async listSourceStates(): Promise<LegalSourceState[]> {
+    const result = await this.pool.query(
+      'SELECT source_id, content_hash, checked_at FROM legal_source_state ORDER BY source_id',
+    );
+    return (result.rows as Array<{ source_id: string; content_hash: string; checked_at: Date | string }>).map((row) => ({
+      sourceId: row.source_id,
+      contentHash: row.content_hash,
+      checkedAt: new Date(row.checked_at),
+    }));
+  }
+
   public async saveSourceState(state: LegalSourceState): Promise<void> {
     await this.pool.query(
       `INSERT INTO legal_source_state (source_id, content_hash, checked_at)
@@ -98,6 +109,10 @@ export class InMemoryLegalUpdatesRepository implements LegalUpdatesRepository {
 
   public async getSourceState(sourceId: string): Promise<LegalSourceState | null> {
     return this.states.get(sourceId) ?? null;
+  }
+
+  public async listSourceStates(): Promise<LegalSourceState[]> {
+    return [...this.states.values()];
   }
 
   public async saveSourceState(state: LegalSourceState): Promise<void> {

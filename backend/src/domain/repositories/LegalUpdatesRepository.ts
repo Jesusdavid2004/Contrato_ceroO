@@ -17,5 +17,6 @@ export interface LegalUpdatesRepository {
   saveIfNew(update: LegalUpdate): Promise<boolean>;
   listRecent(query: RecentUpdatesQuery): Promise<LegalUpdate[]>;
   getSourceState(sourceId: string): Promise<LegalSourceState | null>;
+  listSourceStates(): Promise<LegalSourceState[]>;
   saveSourceState(state: LegalSourceState): Promise<void>;
 }

@@ -51,6 +51,7 @@ async function setup(options: { reply?: string; limit?: number; contract?: Contr
     saveIfNew: async () => true,
     listRecent: async () => options.updates ?? [],
     getSourceState: async () => null,
+    listSourceStates: async () => [],
     saveSourceState: async () => undefined,
   };
   const useCase = new AskAssistantUseCase(
