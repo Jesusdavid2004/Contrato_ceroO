@@ -10,6 +10,7 @@
     "type-check": "tsc --noEmit",
     "test": "vitest run",
     "evaluate": "npm run build && node dist/scripts/evaluate-providers.js",
+    "evaluate:assistant": "npm run build && node dist/scripts/evaluate-assistant.js",
     "migrate:up": "node scripts/migrate.cjs up",
     "migrate:down": "node scripts/migrate.cjs down",
     "seed:legal": "npm run build && node dist/scripts/seed-legal-provisions.js",
