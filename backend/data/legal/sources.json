@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "sources": [
+    {
+      "id": "co-ley-820-2003",
+      "kind": "page",
+      "tema": "arriendo",
+      "title": "Ley 820 de 2003 (Gestor Normativo, Función Pública)",
+      "url": "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=8738",
+      "verifiesProvisionUrls": [
+        "https://www.secretariasenado.gov.co/senado/basedoc/ley_0820_2003.html"
+      ]
+    },
+    {
+      "id": "co-ley-1480-2011",
+      "kind": "page",
+      "tema": "consumo",
+      "title": "Ley 1480 de 2011 (Gestor Normativo, Función Pública)",
+      "url": "https://www.funcionpublica.gov.co/eva/gestornormativo/norma.php?i=44306",
+      "verifiesProvisionUrls": [
+        "https://www.secretariasenado.gov.co/senado/basedoc/ley_1480_2011.html"
+      ]
+    },
+    {
+      "id": "co-news-arriendo",
+      "kind": "feed",
+      "tema": "arriendo",
+      "title": "Noticias: normas sobre arrendamiento de vivienda urbana",
+      "url": "https://news.google.com/rss/search?q=%28decreto+OR+ley+OR+sentencia%29+arrendamiento+vivienda+urbana+Colombia&hl=es-419&gl=CO&ceid=CO:es-419"
+    },
+    {
+      "id": "co-news-consumo",
+      "kind": "feed",
+      "tema": "consumo",
+      "title": "Noticias: normas sobre protección al consumidor",
+      "url": "https://news.google.com/rss/search?q=%28decreto+OR+ley+OR+sentencia%29+%22protecci%C3%B3n+al+consumidor%22+Colombia&hl=es-419&gl=CO&ceid=CO:es-419"
+    }
+  ]
+}
