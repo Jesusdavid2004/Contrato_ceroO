@@ -1,4 +1,4 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 import type { LegalSourceDefinition } from '../../domain/services/LegalSources';
@@ -19,15 +19,13 @@ const catalogSchema = z.object({
 
 export const SOURCE_CATALOG_FILE = 'sources.json';
 
-/** Loads the curated list of official sources. Unknown fields, duplicate ids and non-https urls are rejected. */
-export async function loadLegalSourceCatalog(corpusDir: string): Promise<LegalSourceDefinition[]> {
-  const filePath = path.join(corpusDir, SOURCE_CATALOG_FILE);
+function parseCatalog(content: string, filePath: string): LegalSourceDefinition[] {
   let raw: unknown;
   try {
-    raw = JSON.parse(await fs.readFile(filePath, 'utf8'));
+    raw = JSON.parse(content);
   } catch (error) {
     throw new Error(
-      `Legal source catalog not found or invalid JSON at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+      `Legal source catalog has invalid JSON at ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
   const parsed = catalogSchema.safeParse(raw);
@@ -40,4 +38,16 @@ export async function loadLegalSourceCatalog(corpusDir: string): Promise<LegalSo
     seen.add(source.id);
   }
   return parsed.data.sources;
+}
+
+/** Loads the curated list of official sources. Unknown fields, duplicate ids and non-https urls are rejected. */
+export async function loadLegalSourceCatalog(corpusDir: string): Promise<LegalSourceDefinition[]> {
+  const filePath = path.join(corpusDir, SOURCE_CATALOG_FILE);
+  return parseCatalog(await fs.readFile(filePath, 'utf8'), filePath);
+}
+
+/** Synchronous variant for the composition root, which builds the app synchronously. */
+export function loadLegalSourceCatalogSync(corpusDir: string): LegalSourceDefinition[] {
+  const filePath = path.join(corpusDir, SOURCE_CATALOG_FILE);
+  return parseCatalog(readFileSync(filePath, 'utf8'), filePath);
 }
