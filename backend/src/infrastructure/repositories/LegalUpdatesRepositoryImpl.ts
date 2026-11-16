@@ -10,6 +10,7 @@ interface LegalUpdateRow {
   id: string;
   source_id: string;
   tema: string;
+  kind: string;
   title: string;
   source_url: string;
   content_hash: string;
@@ -21,6 +22,7 @@ function toUpdate(row: LegalUpdateRow): LegalUpdate {
     id: row.id,
     sourceId: row.source_id,
     tema: row.tema,
+    kind: row.kind as LegalUpdate['kind'],
     title: row.title,
     sourceUrl: row.source_url,
     contentHash: row.content_hash,
@@ -33,10 +35,10 @@ export class PostgresLegalUpdatesRepository implements LegalUpdatesRepository {
 
   public async saveIfNew(update: LegalUpdate): Promise<boolean> {
     const result = await this.pool.query(
-      `INSERT INTO legal_updates (id, source_id, tema, title, source_url, content_hash, detected_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO legal_updates (id, source_id, tema, kind, title, source_url, content_hash, detected_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        ON CONFLICT (source_id, content_hash) DO NOTHING`,
-      [update.id, update.sourceId, update.tema, update.title, update.sourceUrl, update.contentHash, update.detectedAt],
+      [update.id, update.sourceId, update.tema, update.kind, update.title, update.sourceUrl, update.contentHash, update.detectedAt],
     );
     return (result.rowCount ?? 0) > 0;
   }
@@ -44,7 +46,7 @@ export class PostgresLegalUpdatesRepository implements LegalUpdatesRepository {
   public async listRecent(query: RecentUpdatesQuery): Promise<LegalUpdate[]> {
     if (query.temas.length === 0) return [];
     const result = await this.pool.query(
-      `SELECT id, source_id, tema, title, source_url, content_hash, detected_at
+      `SELECT id, source_id, tema, kind, title, source_url, content_hash, detected_at
        FROM legal_updates
        WHERE tema = ANY($1::text[]) AND detected_at >= $2
        ORDER BY detected_at DESC, id DESC

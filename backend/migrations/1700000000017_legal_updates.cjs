@@ -9,6 +9,7 @@ exports.up = (pgm) => {
     id TEXT PRIMARY KEY,
     source_id TEXT NOT NULL,
     tema TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT 'norm_change' CHECK (kind IN ('norm_change', 'news')),
     title TEXT NOT NULL,
     source_url TEXT NOT NULL,
     content_hash TEXT NOT NULL,
