@@ -16,6 +16,10 @@ tags:
     description: User registration and session management
   - name: Contracts
     description: Contract uploads, analysis results, and objection letters
+  - name: Assistant
+    description: Grounded conversational assistant and guided walkthrough for one owned contract
+  - name: Legal radar
+    description: Detected changes in official Colombian legal sources
   - name: Realtime
     description: Single-use tickets for the analysis progress WebSocket (see docs/websocket-protocol.md)
 paths:
@@ -987,6 +991,201 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /contracts/{id}/assistant/messages:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Assistant]
+      operationId: listAssistantMessages
+      security:
+        - bearerAuth: []
+      summary: Conversation history of the contract (latest 50 messages, oldest first)
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssistantMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Assistant]
+      operationId: askAssistant
+      security:
+        - bearerAuth: []
+      summary: Ask the assistant about this contract
+      description: >
+        The answer is generated only from a closed context pack (clauses, facts,
+        retrieved legal provisions and recent legal updates). Inline citations
+        `[S1]` that do not exist in the pack are removed. Send
+        `Accept: text/event-stream` to receive `token` events followed by one
+        `done` event carrying the stored message; errors raised after the stream
+        opened arrive as an `error` event with a `message_key`. Failures before
+        the first token (ownership, quota, not ready) use normal HTTP statuses.
+        Rate limited per IP and user, plus a daily message quota.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        "200":
+          description: Assistant message (JSON) or server-sent events stream
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantMessage"
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          description: AI provider unavailable (errors.ai_provider_unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Assistant]
+      operationId: clearAssistantConversation
+      security:
+        - bearerAuth: []
+      summary: Hard-delete the conversation of this contract
+      responses:
+        "200":
+          description: Number of removed messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [removed]
+                properties:
+                  removed:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/{id}/guidance:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Assistant]
+      operationId: getContractGuidance
+      security:
+        - bearerAuth: []
+      summary: Prioritized action plan and narration script
+      description: >
+        Deterministic: priorities and ordering come from code. Steps and
+        narration segments carry message keys and parameters; the client
+        translates them and reads them aloud.
+      responses:
+        "200":
+          description: Plan and narration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractGuidance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /legal/updates:
+    get:
+      tags: [Legal radar]
+      operationId: listLegalUpdates
+      security:
+        - bearerAuth: []
+      summary: Recent changes detected in official legal sources (last 30 days)
+      parameters:
+        - name: tema
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 40
+      responses:
+        "200":
+          description: Updates, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LegalUpdate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /legal/status:
+    get:
+      tags: [Legal radar]
+      operationId: getLegalRadarStatus
+      security:
+        - bearerAuth: []
+      summary: Last successful check per monitored source
+      responses:
+        "200":
+          description: Sources and their last check time
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, tema, title, kind, last_checked_at]
+                  properties:
+                    id:
+                      type: string
+                    tema:
+                      type: string
+                    title:
+                      type: string
+                    kind:
+                      type: string
+                      enum: [page, feed]
+                    last_checked_at:
+                      type: [string, "null"]
+                      format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /health:
     get:
       tags: [System]
@@ -1041,6 +1240,106 @@ components:
       schema:
         type: string
   schemas:
+    AssistantMessage:
+      type: object
+      required: [id, contract_id, role, content, citations, grounded, created_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        grounded:
+          type: boolean
+          description: False when the reply cites no source of the context pack.
+        created_at:
+          type: string
+          format: date-time
+        citations:
+          type: array
+          items:
+            type: object
+            required: [source_id, kind, label, quote]
+            properties:
+              source_id:
+                type: string
+                example: S1
+              kind:
+                type: string
+                enum: [clause, fact, legal, update]
+              label:
+                type: string
+              quote:
+                type: string
+              source_url:
+                type: [string, "null"]
+              verified_at:
+                type: [string, "null"]
+    GuidanceItem:
+      type: object
+      required: [id, message_key, params, clause_id]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        priority:
+          type: integer
+        message_key:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+        clause_id:
+          type: [string, "null"]
+    ContractGuidance:
+      type: object
+      required: [contract_id, locale, global_risk_score, pending_legal_updates, steps, narration]
+      properties:
+        contract_id:
+          type: string
+        locale:
+          type: string
+        global_risk_score:
+          type: integer
+        pending_legal_updates:
+          type: integer
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuidanceItem"
+        narration:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuidanceItem"
+    LegalUpdate:
+      type: object
+      required: [id, source_id, tema, kind, title, source_url, detected_at]
+      properties:
+        id:
+          type: string
+        source_id:
+          type: string
+        tema:
+          type: string
+        kind:
+          type: string
+          enum: [norm_change, news]
+        title:
+          type: string
+        source_url:
+          type: string
+          format: uri
+        detected_at:
+          type: string
+          format: date-time
     RegisterRequest:
       type: object
       required: [name, email, password]
