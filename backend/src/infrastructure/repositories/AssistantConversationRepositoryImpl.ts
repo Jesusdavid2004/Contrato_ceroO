@@ -63,6 +63,15 @@ export class PostgresAssistantConversationRepository implements AssistantConvers
     return (result.rows as AssistantMessageRow[]).map(toMessage);
   }
 
+  public async countUserMessagesSince(userId: string, since: Date): Promise<number> {
+    const result = await this.pool.query(
+      `SELECT COUNT(*)::int AS total FROM assistant_messages
+       WHERE user_id = $1 AND role = 'user' AND created_at >= $2`,
+      [userId, since],
+    );
+    return (result.rows[0] as { total: number }).total;
+  }
+
   public async deleteByContract(contractId: string): Promise<number> {
     const result = await this.pool.query(
       'DELETE FROM assistant_messages WHERE contract_id = $1',
@@ -81,6 +90,12 @@ export class InMemoryAssistantConversationRepository implements AssistantConvers
 
   public async listByContract(contractId: string, limit: number): Promise<AssistantMessage[]> {
     return this.messages.filter((message) => message.contractId === contractId).slice(-limit);
+  }
+
+  public async countUserMessagesSince(userId: string, since: Date): Promise<number> {
+    return this.messages.filter(
+      (message) => message.userId === userId && message.role === 'user' && message.createdAt >= since,
+    ).length;
   }
 
   public async deleteByContract(contractId: string): Promise<number> {

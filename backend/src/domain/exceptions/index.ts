@@ -210,3 +210,9 @@ export class EmailAlreadyExistsError extends DomainError {
     super(`Email already registered: ${email}`, 'errors.email_already_registered', 409, { email });
   }
 }
+
+export class AssistantQuotaExceededError extends DomainError {
+  constructor(limit: number) {
+    super(`Daily assistant message quota exceeded (${limit} messages per day).`, 'errors.assistant_quota_exceeded', 429, { limit });
+  }
+}
