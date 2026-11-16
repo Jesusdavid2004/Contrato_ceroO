@@ -5,6 +5,7 @@ import { Contract } from '../src/domain/entities/Contract';
 import { LegalUpdate } from '../src/domain/entities/LegalUpdate';
 import {
   AssistantQuotaExceededError,
+  ClauseNotFoundError,
   ContractNotFoundError,
   ContractNotReadyError,
   ContractOwnershipError,
@@ -107,6 +108,13 @@ describe('AskAssistantUseCase', () => {
     const { useCase, assistant } = await setup();
     await expect(useCase.execute(ask('Hola?', 'intruder'))).rejects.toBeInstanceOf(ContractOwnershipError);
     expect(assistant.reply).not.toHaveBeenCalled();
+  });
+
+  it('puts the focus clause in the context and rejects a clause of another contract', async () => {
+    const { useCase, requests } = await setup();
+    await useCase.execute({ ...ask('Explica esta clausula'), clauseId: 'c1' });
+    expect(requests[0].sources[0].label).toBe('clause:c1');
+    await expect(useCase.execute({ ...ask(), clauseId: 'not-in-contract' })).rejects.toBeInstanceOf(ClauseNotFoundError);
   });
 
   it('rejects unknown and not-ready contracts', async () => {

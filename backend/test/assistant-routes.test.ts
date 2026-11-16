@@ -93,6 +93,20 @@ describe('assistant routes', () => {
     expect((await ask('x'.repeat(1001))).status).toBe(422);
   });
 
+  it('accepts a clause id, answers about it and returns 404 for a clause that is not in the contract', async () => {
+    const ok = await request(app)
+      .post(`/contracts/${CONTRACT_ID}/assistant/messages`)
+      .set('Authorization', bearer(OWNER))
+      .send({ question: 'Explicame esta clausula', clause_id: 'k1' });
+    expect(ok.status).toBe(200);
+    const missing = await request(app)
+      .post(`/contracts/${CONTRACT_ID}/assistant/messages`)
+      .set('Authorization', bearer(OWNER))
+      .send({ question: 'Explicame esta clausula', clause_id: 'nope' });
+    expect(missing.status).toBe(404);
+    expect(missing.body.message_key).toBe('errors.clause_not_found');
+  });
+
   it('returns 401 without a token', async () => {
     const res = await request(app).post(`/contracts/${CONTRACT_ID}/assistant/messages`).send({ question: 'hola' });
     expect(res.status).toBe(401);

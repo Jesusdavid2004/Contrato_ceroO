@@ -33,6 +33,22 @@ describe('buildAssistantContext', () => {
     expect(sources[0].label).toBe('clause:b');
   });
 
+  it('always includes the focus clause first even when it does not match the question', () => {
+    const clauses = Array.from({ length: MAX_CLAUSE_SOURCES + 2 }, (_, i) => clause(`c${i}`, i + 1, `Texto ${i}`));
+    const sources = buildAssistantContext({
+      ...baseInput, question: 'texto', clauses, focusClauseId: `c${MAX_CLAUSE_SOURCES + 1}`,
+    });
+    expect(sources[0].label).toBe(`clause:c${MAX_CLAUSE_SOURCES + 1}`);
+    expect(sources.filter((source) => source.kind === 'clause')).toHaveLength(MAX_CLAUSE_SOURCES);
+  });
+
+  it('ignores a focus clause id that does not exist', () => {
+    const sources = buildAssistantContext({
+      ...baseInput, question: 'canon', clauses: [clause('a', 1, 'canon')], focusClauseId: 'ghost',
+    });
+    expect(sources).toHaveLength(1);
+  });
+
   it('assigns stable sequential ids and caps clause sources', () => {
     const clauses = Array.from({ length: MAX_CLAUSE_SOURCES + 3 }, (_, i) => clause(`c${i}`, i + 1, `Texto ${i}`));
     const sources = buildAssistantContext({ ...baseInput, question: 'hola', clauses });
