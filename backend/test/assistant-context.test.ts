@@ -53,13 +53,14 @@ describe('buildAssistantContext', () => {
         fuenteVerificadaEn: '2026-11-03',
       }],
       updates: [{
-        id: 'u1', title: 'Decreto nuevo', tema: 'arriendo',
+        id: 'u1', kind: 'news', title: 'Decreto nuevo', tema: 'arriendo',
         sourceUrl: 'https://example.test/u1', detectedAt: '2026-11-10T10:00:00.000Z',
       }],
     });
     expect(sources.map((source) => source.kind)).toEqual(['fact', 'legal', 'update']);
     expect(sources[1].verifiedAt).toBe('2026-11-03');
     expect(sources[2].verifiedAt).toBe('2026-11-10');
+    expect(sources[2].text).toContain('NOT an official source');
   });
 
   it('deduplicates provisions with the same reference', () => {

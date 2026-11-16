@@ -164,6 +164,7 @@ export class AskAssistantUseCase {
     });
     return updates.map((update) => ({
       id: update.id,
+      kind: update.kind,
       title: update.title,
       tema: update.tema,
       sourceUrl: update.sourceUrl,

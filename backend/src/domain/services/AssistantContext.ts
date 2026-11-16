@@ -23,6 +23,8 @@ export interface AssistantSource {
 
 export interface LegalUpdateSummary {
   id: string;
+  /** `norm_change`: official text changed. `news`: press item, not an official source. */
+  kind: 'norm_change' | 'news';
   title: string;
   tema: string;
   sourceUrl: string;
@@ -125,13 +127,20 @@ export function buildAssistantContext(input: AssistantContextInput): AssistantSo
     drafts.push({
       kind: 'update',
       label: update.title,
-      text: `Recent legal update (${update.tema}) detected ${update.detectedAt}: ${update.title}`,
+      text: describeUpdate(update),
       sourceUrl: update.sourceUrl,
       verifiedAt: update.detectedAt.slice(0, ISO_DATE_LENGTH),
     });
   }
 
   return drafts.map((draft, index) => ({ ...draft, id: `S${index + 1}` }));
+}
+
+function describeUpdate(update: LegalUpdateSummary): string {
+  const prefix = update.kind === 'norm_change'
+    ? 'Official legal source changed'
+    : 'Press item, NOT an official source and not proof of any legal change';
+  return `${prefix} (${update.tema}), detected ${update.detectedAt}: ${update.title}`;
 }
 
 const CITATION_PATTERN = /\[(S\d+)\]/g;
