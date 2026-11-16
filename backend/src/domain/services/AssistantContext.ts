@@ -36,6 +36,8 @@ export interface LegalUpdateSummary {
 
 export interface AssistantContextInput {
   question: string;
+  /** Clause the user explicitly asks about; placed first and never dropped by ranking. */
+  focusClauseId?: string;
   clauses: readonly Clause[];
   facts: readonly StoredContractFact[];
   provisions: readonly LegalContextProvision[];
@@ -81,8 +83,14 @@ function clip(text: string): string {
 
 const RISK_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
-function rankClauses(clauses: readonly Clause[], question: Set<string>): Clause[] {
-  return [...clauses]
+function rankClauses(
+  clauses: readonly Clause[],
+  question: Set<string>,
+  focusClauseId?: string,
+): Clause[] {
+  const focus = focusClauseId ? clauses.find((clause) => clause.id === focusClauseId) : undefined;
+  const ranked = [...clauses]
+    .filter((clause) => clause !== focus)
     .map((clause) => ({
       clause,
       score: overlapScore(question, `${clause.originalText} ${clause.plainExplanation}`),
@@ -91,8 +99,9 @@ function rankClauses(clauses: readonly Clause[], question: Set<string>): Clause[
       b.score - a.score
       || RISK_RANK[a.clause.riskLevel] - RISK_RANK[b.clause.riskLevel]
       || a.clause.orderIndex - b.clause.orderIndex)
-    .slice(0, MAX_CLAUSE_SOURCES)
+    .slice(0, focus ? MAX_CLAUSE_SOURCES - 1 : MAX_CLAUSE_SOURCES)
     .map((entry) => entry.clause);
+  return focus ? [focus, ...ranked] : ranked;
 }
 
 function describeClause(clause: Clause): string {
@@ -108,7 +117,7 @@ export function buildAssistantContext(input: AssistantContextInput): AssistantSo
   const question = tokenize(input.question);
   const drafts: Array<Omit<AssistantSource, 'id'>> = [];
 
-  for (const clause of rankClauses(input.clauses, question)) {
+  for (const clause of rankClauses(input.clauses, question, input.focusClauseId)) {
     drafts.push({
       kind: 'clause',
       label: `clause:${clause.id}`,

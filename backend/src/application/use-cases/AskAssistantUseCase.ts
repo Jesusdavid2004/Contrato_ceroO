@@ -5,6 +5,7 @@ import {
 } from '../../domain/entities/AssistantMessage';
 import {
   AssistantQuotaExceededError,
+  ClauseNotFoundError,
   ContractNotFoundError,
   ContractNotReadyError,
   ContractOwnershipError,
@@ -35,6 +36,8 @@ export interface AskAssistantInput {
   contractId: string;
   userId: string;
   question: string;
+  /** Optional clause the question is about; must belong to the contract. */
+  clauseId?: string;
   onToken?: AssistantTokenListener;
 }
 
@@ -76,6 +79,10 @@ export class AskAssistantUseCase {
     if (contract.ownerId !== input.userId) throw new ContractOwnershipError(input.contractId);
     if (contract.status !== 'READY') throw new ContractNotReadyError(input.contractId);
 
+    if (input.clauseId && !contract.clauses.some((clause) => clause.id === input.clauseId)) {
+      throw new ClauseNotFoundError(input.clauseId);
+    }
+
     const now = this.clock();
     const used = await this.conversations.countUserMessagesSince(input.userId, startOfUtcDay(now));
     if (used >= this.dailyMessageLimit) throw new AssistantQuotaExceededError(this.dailyMessageLimit);
@@ -89,6 +96,7 @@ export class AskAssistantUseCase {
 
     const sources = buildAssistantContext({
       question: input.question,
+      focusClauseId: input.clauseId,
       clauses: contract.clauses,
       facts,
       provisions,

@@ -29,7 +29,12 @@ export function createAssistantRouter(deps: AssistantRouterDeps): Router {
     assistantUserLimiter,
     validateBody(askAssistantBodySchema),
     async (req: Request, res: Response, next: NextFunction) => {
-      const input = { contractId: String(req.params.id), userId: req.user!.id, question: req.body.question as string };
+      const input = {
+        contractId: String(req.params.id),
+        userId: req.user!.id,
+        question: req.body.question as string,
+        clauseId: req.body.clause_id as string | undefined,
+      };
       if (!wantsEventStream(req.headers.accept)) {
         try {
           const { assistantMessage } = await deps.askAssistantUseCase.execute(input);
@@ -97,7 +102,7 @@ async function streamAnswer(
   res: Response,
   next: NextFunction,
   useCase: AskAssistantUseCase,
-  input: { contractId: string; userId: string; question: string },
+  input: { contractId: string; userId: string; question: string; clauseId?: string },
 ): Promise<void> {
   // Failures before the first token (ownership, quota, not ready) keep their
   // normal HTTP status; once the stream is open errors become `error` events.
