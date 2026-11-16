@@ -51,6 +51,26 @@ penetration test or a legal compliance certification.
    synthetic examples and does not measure a hosted model or constitute legal
    advice. Review legal source currency and AI outputs before production use.
 
+## Assistant and legal radar threat notes
+
+| Threat | Control |
+|---|---|
+| Prompt injection through contract text, history or the question | Every untrusted block is wrapped in per-request random delimiters and delimiter look-alikes are stripped; the system prompt says to ignore instructions inside them; the model has no tools and cannot reach other contracts. |
+| Invented citations or numbers | The model may only cite ids of a closed context pack. Unknown `[S#]` markers are removed, replies with no valid citation are flagged `grounded: false` and the UI warns. Plan priorities and deadlines come from code. |
+| Reading another user's contract or conversation | Ownership is enforced inside every use case before any data is read; a stranger gets `403` even when asking for a stream. |
+| Cost abuse of the hosted model | Dedicated per-IP and per-user rate limits plus a daily message quota (`ASSISTANT_DAILY_MESSAGES`), a token cap and a request timeout. |
+| Leaking provider errors | Provider failures map to `errors.ai_provider_unavailable`; stream errors are translated to a `message_key` and carry no provider text. Logs hold token counts and latency, never question or answer text. |
+| SSRF through the radar | The radar only fetches URLs listed in the versioned `sources.json`; they must be `https`, there is no user-supplied URL, redirects are capped and the body is size limited. |
+| TLS downgrade for the radar | Certificate verification stays on. The missing intermediate of one government host is solved by adding its public CA certificates to the trust store (`backend/data/legal/ca`), never by disabling verification. |
+| Press items mistaken for law | Feed entries are stored as `news`, labeled unofficial in the UI and in the model context, and only an official page hash change creates a `norm_change`. |
+| Stale legal citations | The "verified on" date advances only while the official text is unchanged; after a change the date is left alone so the staleness stays visible. |
+| Retention of conversations | Messages are hard-deleted with the contract (cascade), with the account, or on demand (`DELETE /contracts/:id/assistant/messages`). |
+
+Residual risks: the model can still paraphrase a source imperfectly, so the UI
+always shows the quoted source and a disclaimer; the radar detects that a
+source changed, not what the change means, so changed topics need a human
+review of the curated corpus.
+
 ## Deployment Security Checklist
 
 - Terminate HTTPS at a managed ingress/reverse proxy, redirect HTTP to HTTPS,

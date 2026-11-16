@@ -87,3 +87,29 @@ contract and an existing generated letter must belong to the authenticated
 user. The body is `{ "content": "..." }`; content must be non-empty and no
 longer than 350 words. The response uses the same shape as the generation
 response. Subsequent PDF downloads use the saved edits.
+
+## Assistant and guidance
+
+All routes below are scoped to a contract owned by the authenticated user.
+
+`POST /:id/assistant/messages` with body `{ "question": "..." }` (1-1000 chars)
+answers from a closed context pack and stores the exchange. The reply has
+`citations` (`source_id` such as `S1`, `kind` clause|fact|legal|update, `quote`,
+`source_url`, `verified_at`) and `grounded` (false when nothing in the pack
+supported it). Send `Accept: text/event-stream` to stream `token` events and a
+final `done` event; failures before the first token keep their HTTP status
+(`403`, `404`, `409`, `429` with `errors.assistant_quota_exceeded`).
+
+`GET /:id/assistant/messages` lists the latest 50 messages;
+`DELETE /:id/assistant/messages` hard-deletes them.
+
+`GET /:id/guidance` returns `steps` (prioritized action plan) and `narration`
+(ordered script). Every item has `message_key` and `params`; the client
+translates and reads them aloud, and uses `clause_id` to highlight the clause
+being narrated.
+
+## Legal radar
+
+`GET /legal/updates?tema=arriendo` lists changes detected in the last 30 days
+(`kind`: `norm_change` for an official text that changed, `news` for a press
+item). `GET /legal/status` shows the last check time of each monitored source.

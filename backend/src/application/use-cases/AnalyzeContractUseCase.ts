@@ -1,11 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { Clause, type LegalBasisReference } from '../../domain/entities/Clause';
+import { Clause, REQUIRES_REVIEW_CONFIDENCE, type LegalBasisReference } from '../../domain/entities/Clause';
 import type { ContractRepository } from '../../domain/repositories/ContractRepository';
 import type { AIUsageRepository } from '../../domain/repositories/AIUsageRepository';
 import {
   ContractNotFoundError,
   ContractOwnershipError,
   DailyQuotaExceededError,
+  OutOfCoverageError,
+  StagingExpiredError,
   TextExtractionFailedError,
 } from '../../domain/exceptions/index';
 import { DomainError } from '../../domain/exceptions/DomainError';
@@ -16,17 +18,28 @@ import type {
   ClauseSegmenter,
   TextExtractor,
 } from '../../domain/services/InfrastructureInterfaces';
+import type {
+  AnalysisEvent,
+  AnalysisEventPublisher,
+} from '../../domain/services/AnalysisEventPublisher';
+import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
+import { stagingUriFor } from '../../domain/services/AnalysisStaging';
+import type { FactsRepository } from '../../domain/repositories/FactsRepository';
+import { extractContractFacts } from '../../domain/services/ContractFacts';
 import { Contract } from '../../domain/entities/Contract';
 import { config } from '../../shared/config';
 import { logger } from '../../shared/logger';
 
 const MAX_CLAUSES_PER_BATCH = 8;
-const SMART_RECHECK_CONFIDENCE = 0.6;
+const SMART_RECHECK_CONFIDENCE = REQUIRES_REVIEW_CONFIDENCE;
 const PROMPT_VERSION = 'clause-classification-v2';
 export interface AnalyzeContractInput {
   contractId: string;
   userId: string;
-  fileBuffer: Buffer;
+  /** Bytes directos (pruebas y compatibilidad); preferir stagingKey en rutas. */
+  fileBuffer?: Buffer;
+  /** Llave de staging (`staging:<contractId>`); sobrevive reinicios con TTL. */
+  stagingKey?: string;
   mimeType: string;
 }
 
@@ -40,6 +53,9 @@ export class AnalyzeContractUseCase {
     private readonly cache: AIClassificationCache,
     private readonly clock: () => Date = () => new Date(),
     private readonly legalContextProvider?: LegalContextProvider,
+    private readonly eventPublisher?: AnalysisEventPublisher,
+    private readonly staging?: AnalysisStaging,
+    private readonly factsRepository?: FactsRepository,
   ) {}
 
   public async execute(input: AnalyzeContractInput): Promise<void> {
@@ -49,7 +65,23 @@ export class AnalyzeContractUseCase {
 
     const now = this.clock();
     const dayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    if (contract.coverageStatus === 'unsupported') {
+      // Sin conclusiones juridicas locales inventadas: se marca fallo
+      // explicito sin consumir cuota ni clasificar.
+      contract.markFailed('errors.out_of_coverage');
+      await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: contract.id,
+        userId: input.userId,
+        jobId: contract.id,
+        type: 'failed',
+        payload: { status: 'FAILED', failureMessageKey: 'errors.out_of_coverage' },
+      });
+      await this.cleanupStaging(input.stagingKey);
+      throw new OutOfCoverageError(contract.jurisdiction, contract.contractType);
+    }
     try {
+      const { fileBuffer, mimeType: stagedMimeType } = await this.resolveInputBytes(input);
       const reserved = await this.usageRepository.reserveDailyAnalysis(
         input.userId,
         config.DAILY_AI_QUOTA,
@@ -59,8 +91,15 @@ export class AnalyzeContractUseCase {
       if (!reserved) throw new DailyQuotaExceededError(config.DAILY_AI_QUOTA);
       contract.markAnalyzing();
       await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: contract.id,
+        userId: input.userId,
+        jobId: contract.id,
+        type: 'stage',
+        payload: { status: 'ANALYZING' },
+      });
 
-      const text = await this.textExtractor.extractText(input.fileBuffer, input.mimeType);
+      const text = await this.textExtractor.extractText(fileBuffer, stagedMimeType);
       const segmented = await this.clauseSegmenter.segment(text);
       if (segmented.length === 0) {
         throw new TextExtractionFailedError('No contract clauses could be segmented.');
@@ -71,8 +110,13 @@ export class AnalyzeContractUseCase {
         const batch = segmented.slice(start, start + MAX_CLAUSES_PER_BATCH);
         const ids = batch.map(() => `clause-${randomUUID()}`);
         const clauseInputs = batch.map((clause, index) => ({ id: ids[index], text: clause.text }));
+        // Sin cobertura el analisis ya fallo arriba: aqui siempre hay alcance.
+        // El scope limita por tema curado (arriendo/consumo); sin mapa no hay
+        // recuperacion en vez de normas parecidas de otro ambito.
         const legalContext = this.legalContextProvider
-          ? await this.legalContextProvider.retrieve(contract.jurisdiction, clauseInputs)
+          ? await this.legalContextProvider.retrieve(contract.jurisdiction, clauseInputs, {
+            contractType: contract.contractType,
+          })
           : undefined;
         const cacheKey = this.createCacheKey(
           contract,
@@ -131,17 +175,89 @@ export class AnalyzeContractUseCase {
             whyRisky: classification.why_risky,
             legalBasis: this.enrichLegalBasis(legalContext, ids[index], classification.legal_basis),
             suggestedChange: classification.suggested_change,
+            pageNumber: batch[index].pageNumber ?? null,
+            startOffset: batch[index].startOffset ?? null,
+            endOffset: batch[index].endOffset ?? null,
           }));
         }
       }
 
       contract.setClauses(clauses);
+      if (this.factsRepository) {
+        const facts = extractContractFacts({
+          fullText: text,
+          clauses: clauses.map((clause) => ({
+            id: clause.id,
+            startOffset: clause.startOffset,
+            endOffset: clause.endOffset,
+          })),
+        });
+        await this.factsRepository.saveFacts(
+          contract.id,
+          facts.map((fact) => ({ ...fact })),
+        );
+      }
       contract.markReady();
       await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: contract.id,
+        userId: input.userId,
+        jobId: contract.id,
+        type: 'completed',
+        payload: { status: 'READY', globalRiskScore: contract.globalRiskScore },
+      });
+      await this.cleanupStaging(input.stagingKey);
     } catch (error) {
       contract.markFailed(error instanceof DomainError ? error.messageKey : 'errors.analysis_failed');
       await this.contractRepository.save(contract);
+      await this.publishEvent({
+        contractId: input.contractId,
+        userId: input.userId,
+        jobId: input.contractId,
+        type: 'failed',
+        payload: { status: 'FAILED', failureMessageKey: contract.failureReason },
+      });
+      await this.cleanupStaging(input.stagingKey);
       throw error;
+    }
+  }
+
+  /** Resuelve los bytes: directos si vienen, o del staging con TTL. */
+  private async resolveInputBytes(input: AnalyzeContractInput): Promise<{ fileBuffer: Buffer; mimeType: string }> {
+    if (input.fileBuffer) {
+      return { fileBuffer: input.fileBuffer, mimeType: input.mimeType };
+    }
+    if (input.stagingKey && this.staging) {
+      const staged = await this.staging.fetch(stagingUriFor(input.stagingKey));
+      if (staged) return { fileBuffer: staged.buffer, mimeType: staged.mimeType };
+    }
+    throw new StagingExpiredError();
+  }
+
+  /** Borra el staging al terminar; nunca rompe el resultado. */
+  private async cleanupStaging(stagingKey?: string): Promise<void> {
+    if (!stagingKey || !this.staging) return;
+    try {
+      await this.staging.remove(stagingUriFor(stagingKey));
+    } catch (error) {
+      logger.error('Staging cleanup failed', {
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
+    }
+  }
+
+  /**
+   * Avisa el avance sin bloquear el analisis: si el bus falla se registra
+   * y el trabajo continua; el estado definitivo ya quedo persistido.
+   */
+  private async publishEvent(event: Omit<AnalysisEvent, 'occurredAt'>): Promise<void> {    if (!this.eventPublisher) return;
+    try {
+      await this.eventPublisher.publish({ ...event, occurredAt: this.clock() });
+    } catch (error) {
+      logger.error('Analysis event publish failed', {
+        contractId: event.contractId,
+        errorName: error instanceof Error ? error.name : 'UnknownError',
+      });
     }
   }
 

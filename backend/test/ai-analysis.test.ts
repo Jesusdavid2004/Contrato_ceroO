@@ -229,7 +229,8 @@ describe('PostgresLegalContextProvider', () => {
           })];
         },
         saveMany: async () => undefined,
-        countByJurisdiction: async () => 1,
+        markSourcesVerified: async () => 0,
+      countByJurisdiction: async () => 1,
       },
       {
         embed: async (text, purpose) => {

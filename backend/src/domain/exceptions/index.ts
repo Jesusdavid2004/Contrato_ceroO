@@ -41,6 +41,80 @@ export class TextExtractionFailedError extends DomainError {
   }
 }
 
+export class FactNotFoundError extends DomainError {
+  constructor(contractId: string, key: string) {
+    super(`Fact not found: ${key}`, 'errors.fact_not_found', 404, { contractId, key });
+  }
+}
+
+export class FactTransitionError extends DomainError {
+  constructor(key: string, status: string) {
+    super(
+      `Invalid fact transition for ${key} to ${status}.`,
+      'errors.fact_transition_invalid',
+      422,
+      { key, status },
+    );
+  }
+}
+
+export class ReminderNotFoundError extends DomainError {
+  constructor(id: string) {
+    super(`Reminder not found: ${id}`, 'errors.reminder_not_found', 404, { id });
+  }
+}
+
+export class ReminderDateError extends DomainError {
+  constructor() {
+    super('Reminder due date must be an unambiguous future date.', 'errors.reminder_invalid_date', 422);
+  }
+}
+
+export class ClauseNotFoundError extends DomainError {
+  constructor(clauseId: string) {
+    super(`Clause not found: ${clauseId}`, 'errors.clause_not_found', 404, { clauseId });
+  }
+}
+
+export class ProposalStateError extends DomainError {
+  constructor(reason: string) {
+    super(reason, 'errors.proposal_not_editable', 409);
+  }
+}
+
+export class ReviewNotFoundError extends DomainError {
+  constructor(id: string) {
+    super(`Review request not found: ${id}`, 'errors.review_not_found', 404, { id });
+  }
+}
+
+export class ReviewStateError extends DomainError {
+  constructor(reason: string) {
+    super(reason, 'errors.review_transition_invalid', 409);
+  }
+}
+
+export class StagingExpiredError extends DomainError {
+  constructor() {
+    super(
+      'Staged analysis bytes expired before the worker read them; upload the contract again.',
+      'errors.staging_expired',
+      422,
+    );
+  }
+}
+
+export class OutOfCoverageError extends DomainError {
+  constructor(jurisdiction: string, contractType: string) {
+    super(
+      `Analysis not covered for ${contractType} in ${jurisdiction}; no local conclusions are produced.`,
+      'errors.out_of_coverage',
+      422,
+      { jurisdiction, contractType },
+    );
+  }
+}
+
 export class ContractNotFoundError extends DomainError {
   constructor(contractId: string) {
     super(`Contract not found: ${contractId}`, 'errors.contract_not_found', 404, { contractId });
@@ -134,5 +208,17 @@ export class InvalidCredentialsError extends DomainError {
 export class EmailAlreadyExistsError extends DomainError {
   constructor(email: string) {
     super(`Email already registered: ${email}`, 'errors.email_already_registered', 409, { email });
+  }
+}
+
+export class AssistantQuotaExceededError extends DomainError {
+  constructor(limit: number) {
+    super(`Daily assistant message quota exceeded (${limit} messages per day).`, 'errors.assistant_quota_exceeded', 429, { limit });
+  }
+}
+
+export class LegalSourceUnavailableError extends DomainError {
+  constructor(sourceUrl: string) {
+    super('A legal source could not be fetched.', 'errors.legal_source_unavailable', 502, { sourceUrl });
   }
 }

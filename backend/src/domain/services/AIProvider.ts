@@ -46,6 +46,11 @@ export interface ObjectionLetterRequest {
     legalBasis: LegalBasisReference[];
     suggestedChange: string | null;
   }>;
+  letterOptions?: {
+    recipient?: string;
+    purpose?: 'clarification' | 'adjustment' | 'other';
+    tone?: 'respectful' | 'formal' | 'firm';
+  };
 }
 
 export interface AIProvider {

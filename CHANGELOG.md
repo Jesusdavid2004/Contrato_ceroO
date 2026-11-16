@@ -4,6 +4,24 @@ Notable changes to ContratoClaro are documented here.
 
 ## [Unreleased]
 
+### Added (assistant and legal radar)
+
+- Contract assistant: grounded chat per contract (`POST /contracts/:id/assistant/messages`,
+  JSON or server-sent events) answering only from a closed context pack of
+  clauses, facts, retrieved provisions and recent legal updates; invented
+  citations are dropped and ungrounded replies are flagged.
+- Guided walkthrough: deterministic prioritized action plan and narration script
+  (`GET /contracts/:id/guidance`) made of message keys, translated and read aloud
+  by the client.
+- Legal radar: scheduled change detection over official sources (Gestor
+  Normativo pages hashed, press feeds parsed), `GET /legal/updates` and
+  `GET /legal/status`, with provision verification dates refreshed only while a
+  source is unchanged. Source fetching keeps full TLS verification and ships the
+  public CA chain the Función Pública host omits.
+- Migrations 16 and 17: `assistant_messages`, `legal_updates`, `legal_source_state`.
+- Environment variables: `GEMINI_MODEL_ASSISTANT`, `AI_MAX_TOKENS_ASSISTANT`,
+  `ASSISTANT_DAILY_MESSAGES`, `LEGAL_RADAR_ENABLED`, `LEGAL_RADAR_INTERVAL_MINUTES`.
+
 ### Added
 
 - Verified citation corpus: versioned multi-file legal corpus (`manifest.json`

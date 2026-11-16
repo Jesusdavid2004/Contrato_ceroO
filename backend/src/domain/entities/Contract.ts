@@ -1,6 +1,11 @@
 import type { ContractType } from '../value-objects/ContractType';
 import type { ContractStatus } from '../value-objects/ContractStatus';
 import type { Jurisdiction } from '../value-objects/Jurisdiction';
+import {
+  resolveTypedCoverage,
+  type CoverageStatus,
+  type UserRole,
+} from '../services/CoveragePolicy';
 import { Clause } from './Clause';
 import { RiskScore } from '../value-objects/RiskScore';
 
@@ -17,6 +22,9 @@ export interface ContractProps {
   contractType: ContractType;
   jurisdiction: Jurisdiction;
   locale: string;
+  userRole?: UserRole;
+  coverageStatus?: CoverageStatus;
+  coverageRulesVersion?: string;
   status?: ContractStatus;
   clauses?: Clause[];
   globalRiskScore?: number;
@@ -33,6 +41,9 @@ export class Contract {
   public readonly contractType: ContractType;
   public readonly jurisdiction: Jurisdiction;
   public readonly locale: string;
+  public readonly userRole: UserRole;
+  public readonly coverageStatus: CoverageStatus;
+  public readonly coverageRulesVersion: string;
   private _status: ContractStatus;
   private _clauses: Clause[];
   private _globalRiskScore: number;
@@ -48,6 +59,10 @@ export class Contract {
     this.contractType = props.contractType;
     this.jurisdiction = props.jurisdiction;
     this.locale = props.locale;
+    this.userRole = props.userRole ?? 'other';
+    const coverage = resolveTypedCoverage(props.jurisdiction, props.contractType);
+    this.coverageStatus = props.coverageStatus ?? coverage.status;
+    this.coverageRulesVersion = props.coverageRulesVersion ?? coverage.rulesVersion;
     this._status = props.status || 'UPLOADED';
     this._clauses = props.clauses || [];
     this.uploadedAt = props.uploadedAt || new Date();
@@ -140,6 +155,9 @@ export class Contract {
       contract_type: this.contractType,
       jurisdiction: this.jurisdiction,
       locale: this.locale,
+      user_role: this.userRole,
+      coverage_status: this.coverageStatus,
+      coverage_rules_version: this.coverageRulesVersion,
       status: this._status,
       global_risk_score: this._globalRiskScore,
       uploaded_at: this.uploadedAt.toISOString(),

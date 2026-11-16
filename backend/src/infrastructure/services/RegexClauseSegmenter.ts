@@ -27,10 +27,18 @@ export class RegexClauseSegmenter implements HeadingClauseSegmenter {
       .map((paragraph) => paragraph.trim())
       .filter((paragraph) => paragraph.length > 20);
 
-    return paragraphs.map((paragraph, index) => ({
-      orderIndex: index + 1,
-      text: paragraph,
-    }));
+    let cursor = 0;
+    return paragraphs.map((paragraph, index) => {
+      const startOffset = text.indexOf(paragraph, cursor);
+      const endOffset = startOffset >= 0 ? startOffset + paragraph.length : -1;
+      if (startOffset >= 0) cursor = endOffset;
+      return {
+        orderIndex: index + 1,
+        text: paragraph,
+        startOffset: startOffset >= 0 ? startOffset : undefined,
+        endOffset: endOffset >= 0 ? endOffset : undefined,
+      };
+    });
   }
 
   public segmentHeadings(text: string): SegmentedClause[] {
@@ -56,9 +64,13 @@ export class RegexClauseSegmenter implements HeadingClauseSegmenter {
 
       const clauseText = text.substring(startIndex, nextIndex).trim();
       if (clauseText.length > 0) {
+        const trimmedLead = text.substring(startIndex, nextIndex).length - text.substring(startIndex, nextIndex).trimStart().length;
+        const realStart = startIndex + trimmedLead;
         clauses.push({
           orderIndex: clauses.length + 1,
           text: clauseText,
+          startOffset: realStart,
+          endOffset: realStart + clauseText.length,
         });
       }
     }

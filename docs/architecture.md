@@ -146,6 +146,66 @@ The data relationship diagram is intentionally a flowchart rather than a
 crow-foot ER notation so that entity ownership and foreign-key direction remain
 readable in GitHub's Mermaid renderer.
 
+## Contract assistant, narration and legal radar
+
+Three features sit on top of the analysis: a grounded **assistant** (chat per
+contract), a spoken **walkthrough** (plan + narration) and a **legal radar**
+that watches official sources. See
+[ADR 0009](adr/0009-contract-assistant-and-legal-radar.md).
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant UI as Results page
+    participant API as assistantRoutes
+    participant UC as AskAssistantUseCase
+    participant Ctx as AssistantContext (domain)
+    participant RAG as LegalContextProvider
+    participant Radar as LegalUpdatesRepository
+    participant LLM as AssistantProvider (Gemini or extractive)
+    participant DB as PostgreSQL
+
+    UI->>API: POST /contracts/:id/assistant/messages (Accept: text/event-stream)
+    API->>UC: execute(contractId, userId, question, clauseId?)
+    UC->>DB: contract + facts + last 8 messages (ownership checked)
+    UC->>RAG: retrieve provisions (curated topics only)
+    UC->>Radar: recent updates for the contract topic
+    UC->>Ctx: buildAssistantContext (closed pack S1..Sn, focus clause first)
+    UC->>LLM: reply(pack, question) streaming
+    LLM-->>UI: token events (through the use case listener)
+    UC->>Ctx: normalize and validate [S#] markers, drop unknown ones
+    UC->>DB: append user and assistant messages (grounded flag)
+    API-->>UI: done event with citations
+```
+
+```mermaid
+flowchart LR
+    subgraph Radar["Legal radar (scheduled)"]
+        Catalog["sources.json (https only)"] --> Refresh["RefreshLegalSourcesUseCase"]
+        Fetcher["HttpLegalSourceFetcher (verified TLS)"] --> Refresh
+        Refresh -->|"page hash changed"| Upd[("legal_updates norm_change")]
+        Refresh -->|"new feed entry"| News[("legal_updates news")]
+        Refresh -->|"unchanged"| Prov[("legal_provisions.fuente_verificada_en")]
+    end
+    Upd --> Assistant["Assistant context + guidance banner"]
+    News --> Assistant
+```
+
+New tables: `assistant_messages` (cascade-deleted with the contract),
+`legal_updates` (unique per source and content hash) and `legal_source_state`
+(last hash and check time per source).
+
+Design rules worth remembering:
+
+- Priorities, ordering and deadlines of the action plan are computed in
+  `domain/services/ActionPlan.ts`; the LLM never produces numbers or decisions.
+  Plan steps and narration segments carry message keys, so the frontend
+  translates them and the narration follows a runtime language switch.
+- The assistant may only cite sources in its context pack. Press items are
+  labeled as unofficial and are never presented as law.
+- A radar failure never breaks analysis or chat: each source is isolated and a
+  missing catalog only disables the radar.
+
 ## Architectural Boundaries and Limits
 
 - Presentation routes validate HTTP input and dispatch use cases; application

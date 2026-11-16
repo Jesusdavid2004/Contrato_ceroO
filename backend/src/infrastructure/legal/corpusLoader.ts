@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -55,6 +56,28 @@ export interface CorpusCoverageReport {
   jurisdiction: string;
   total: number;
   files: CorpusFileReport[];
+}
+
+/**
+ * Localiza el corpus curado tanto en desarrollo (backend/data/legal) como en
+ * dist/ y en la imagen Docker (WORKDIR con data copiada). Sin esto el seed
+ * falla porque tsc no copia JSON al compilar.
+ */
+export function resolveCorpusDir(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'data/legal'),
+    path.resolve(__dirname, '..', '..', '..', 'data/legal'),
+  ];
+  for (const candidate of candidates) {
+    try {
+      if (existsSync(path.join(candidate, 'manifest.json'))) return candidate;
+    } catch {
+      continue;
+    }
+  }
+  throw new Error(
+    `Legal corpus not found. Tried: ${candidates.join(', ')}.`,
+  );
 }
 
 function minOf(values: string[]): string {

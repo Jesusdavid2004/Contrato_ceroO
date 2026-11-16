@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'node:crypto';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
@@ -26,10 +27,36 @@ import { GeminiDocumentProcessor } from './infrastructure/ai/GeminiDocumentProce
 import { LocalDocumentProcessor } from './infrastructure/ai/LocalDocumentProcessor';
 import { OfflineDocumentProcessor } from './infrastructure/ai/OfflineDocumentProcessor';
 import { InMemoryAIClassificationCache } from './infrastructure/services/InMemoryAIClassificationCache';
-import { InProcessAnalysisWorker } from './infrastructure/services/InProcessAnalysisWorker';
+import { PostgresAnalysisJobQueue, InMemoryAnalysisJobQueue } from './infrastructure/jobs/AnalysisJobQueueImpl';
+import { AnalysisJobRunner } from './infrastructure/jobs/AnalysisJobRunner';
 import { PostgresAIUsageRepository, InMemoryAIUsageRepository } from './infrastructure/repositories/AIUsageRepositoryImpl';
 import { PostgresLegalProvisionRepository } from './infrastructure/repositories/LegalProvisionRepositoryImpl';
 import { HuggingFaceLocalEmbeddingProvider } from './infrastructure/ai/HuggingFaceLocalEmbeddingProvider';
+import { GeminiAssistantProvider } from './infrastructure/ai/GeminiAssistantProvider';
+import { ExtractiveAssistantProvider } from './infrastructure/ai/ExtractiveAssistantProvider';
+import {
+  PostgresAssistantConversationRepository,
+  InMemoryAssistantConversationRepository,
+} from './infrastructure/repositories/AssistantConversationRepositoryImpl';
+import {
+  PostgresLegalUpdatesRepository,
+  InMemoryLegalUpdatesRepository,
+} from './infrastructure/repositories/LegalUpdatesRepositoryImpl';
+import { AskAssistantUseCase } from './application/use-cases/AskAssistantUseCase';
+import {
+  ListAssistantMessagesUseCase,
+  ClearAssistantConversationUseCase,
+} from './application/use-cases/AssistantHistoryUseCases';
+import { GetContractGuidanceUseCase } from './application/use-cases/GetContractGuidanceUseCase';
+import { RefreshLegalSourcesUseCase } from './application/use-cases/RefreshLegalSourcesUseCase';
+import { GetLegalRadarStatusUseCase, ListLegalUpdatesUseCase } from './application/use-cases/LegalRadarQueries';
+import type { LegalSourceDefinition } from './domain/services/LegalSources';
+import { HttpLegalSourceFetcher, createNodeHttpsGet, loadExtraCaCertificates } from './infrastructure/legal/HttpLegalSourceFetcher';
+import { LegalRadarScheduler } from './infrastructure/legal/LegalRadarScheduler';
+import { loadLegalSourceCatalogSync } from './infrastructure/legal/sourceCatalogLoader';
+import { resolveCorpusDir } from './infrastructure/legal/corpusLoader';
+import { createLegalRadarRouter } from './presentation/routes/legalRadarRoutes';
+import { createAssistantRouter } from './presentation/routes/assistantRoutes';
 import { PostgresLegalContextProvider } from './infrastructure/services/PostgresLegalContextProvider';
 
 // Use Cases
@@ -46,6 +73,28 @@ import { UpdateObjectionLetterUseCase } from './application/use-cases/UpdateObje
 // Routes
 import { createAuthRouter } from './presentation/routes/authRoutes';
 import { createContractRouter } from './presentation/routes/contractRoutes';
+import { createRealtimeRouter } from './presentation/realtime/realtimeRoutes';
+import { RealtimeTicketStore } from './presentation/realtime/realtimeTickets';
+import { RealtimeServer } from './presentation/realtime/realtimeServer';
+import { registerRealtimeContext } from './presentation/realtime/realtimeContext';
+import { InMemoryAnalysisEventBus } from './infrastructure/realtime/InMemoryAnalysisEventBus';
+import { PostgresFactsRepository, InMemoryFactsRepository } from './infrastructure/repositories/FactsRepositoryImpl';
+import { PostgresRemindersRepository, InMemoryRemindersRepository } from './infrastructure/repositories/RemindersRepositoryImpl';
+import { CreateReminderUseCase, CompleteReminderUseCase } from './application/use-cases/ReminderUseCases';
+import { GenerateCaseReportUseCase } from './application/use-cases/ReportUseCases';
+import { RequestReviewUseCase, UpdateReviewUseCase } from './application/use-cases/ReviewUseCases';
+import { PostgresReviewRequestsRepository, InMemoryReviewRequestsRepository } from './infrastructure/repositories/ReviewRequestsRepositoryImpl';
+import { PostgresProposalsRepository, InMemoryProposalsRepository } from './infrastructure/repositories/ProposalsRepositoryImpl';
+import { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from './application/use-cases/ProposalUseCases';
+import { CompareContractsUseCase } from './application/use-cases/CompareContractsUseCase';
+import { EncryptedFileStaging } from './infrastructure/staging/EncryptedFileStaging';
+import { InMemoryStaging } from './infrastructure/staging/InMemoryStaging';
+import type { AnalysisStaging } from './domain/services/AnalysisStaging';
+import {
+  PostgresAnalysisEventOutbox,
+  startOutboxPublisher,
+} from './infrastructure/realtime/PostgresAnalysisEventOutbox';
+import type { AnalysisEventPublisher } from './domain/services/AnalysisEventPublisher';
 
 export function createApp(options?: { inMemory?: boolean }) {
   const app = express();
@@ -54,7 +103,13 @@ export function createApp(options?: { inMemory?: boolean }) {
   app.use(helmet());
   const allowedOrigins = config.NODE_ENV === 'production'
     ? [config.CORS_ORIGIN]
-    : [config.CORS_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'];
+    : [
+      config.CORS_ORIGIN,
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    ];
   app.use(
     cors({
       origin: allowedOrigins,
@@ -71,7 +126,21 @@ export function createApp(options?: { inMemory?: boolean }) {
   }
   const userRepository = isInMemory ? new InMemoryUserRepository() : new PostgresUserRepository(pool);
   const contractRepository = isInMemory ? new InMemoryContractRepository() : new PostgresContractRepository(pool);
+  const factsRepository = isInMemory ? new InMemoryFactsRepository() : new PostgresFactsRepository(pool);
+  const reviewsRepository = isInMemory ? new InMemoryReviewRequestsRepository() : new PostgresReviewRequestsRepository(pool);
+  const remindersRepository = isInMemory ? new InMemoryRemindersRepository() : new PostgresRemindersRepository(pool);
+  const proposalsRepository = isInMemory ? new InMemoryProposalsRepository() : new PostgresProposalsRepository(pool);
   const fileStorage = new LocalFileStorage();
+  const analysisStaging: AnalysisStaging = isInMemory
+    ? new InMemoryStaging()
+    : new EncryptedFileStaging(config.STAGING_DIR, resolveStagingKey().key);
+  void analysisStaging.purgeExpired().then((purged) => {
+    if (purged > 0) logger.info('Purged expired staged analyses', { purged });
+  }).catch((error: unknown) => {
+    logger.error('Staging purge failed', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+  });
   // Hybrid AI wiring: the fast tier classifies every clause with the local
   // model; the smart tier (low-confidence rechecks + letters) uses the free
   // Gemini provider when GEMINI_API_KEY is set, otherwise the local model.
@@ -114,6 +183,82 @@ export function createApp(options?: { inMemory?: boolean }) {
       new HuggingFaceLocalEmbeddingProvider(config.EMBEDDING_CACHE_DIR),
     )
     : undefined;
+  const conversationRepository = isInMemory
+    ? new InMemoryAssistantConversationRepository()
+    : new PostgresAssistantConversationRepository(pool);
+  const legalUpdatesRepository = isInMemory
+    ? new InMemoryLegalUpdatesRepository()
+    : new PostgresLegalUpdatesRepository(pool);
+  const assistantProvider = tiers.smart === 'gemini' && config.GEMINI_API_KEY
+    ? new GeminiAssistantProvider({
+      apiKey: config.GEMINI_API_KEY,
+      model: config.GEMINI_MODEL_ASSISTANT,
+      maxTokens: config.AI_MAX_TOKENS_ASSISTANT,
+      timeoutMs: config.AI_ASSISTANT_TIMEOUT_MS,
+    })
+    : new ExtractiveAssistantProvider();
+  const askAssistantUseCase = new AskAssistantUseCase(
+    contractRepository,
+    factsRepository,
+    conversationRepository,
+    assistantProvider,
+    config.ASSISTANT_DAILY_MESSAGES,
+    legalContextProvider,
+    legalUpdatesRepository,
+  );
+  const assistantRouter = createAssistantRouter({
+    askAssistantUseCase,
+    listMessagesUseCase: new ListAssistantMessagesUseCase(contractRepository, conversationRepository),
+    clearConversationUseCase: new ClearAssistantConversationUseCase(contractRepository, conversationRepository),
+    getGuidanceUseCase: new GetContractGuidanceUseCase(
+      contractRepository,
+      factsRepository,
+      remindersRepository,
+      legalUpdatesRepository,
+    ),
+  });
+  const legalRadarSources = isInMemory ? [] : loadRadarSources();
+  const legalRadarRouter = createLegalRadarRouter({
+    listUpdatesUseCase: new ListLegalUpdatesUseCase(
+      legalUpdatesRepository,
+      [...new Set(['arriendo', 'consumo', ...legalRadarSources.map((source) => source.tema)])],
+    ),
+    statusUseCase: new GetLegalRadarStatusUseCase(legalRadarSources, legalUpdatesRepository),
+  });
+  if (config.LEGAL_RADAR_ENABLED && legalRadarSources.length > 0) {
+    new LegalRadarScheduler(
+      new RefreshLegalSourcesUseCase(
+        legalRadarSources,
+        new HttpLegalSourceFetcher(createNodeHttpsGet(loadExtraCaCertificates(resolveCorpusDir()))),
+        legalUpdatesRepository,
+        new PostgresLegalProvisionRepository(pool),
+      ),
+      config.LEGAL_RADAR_INTERVAL_MINUTES,
+    ).start();
+  }
+  const ticketStore = new RealtimeTicketStore();
+  const realtimeServer = new RealtimeServer(
+    ticketStore,
+    async (userId, contractId) => {
+      const contract = await contractRepository.findById(contractId);
+      if (!contract) return null;
+      if (contract.ownerId !== userId) return 'forbidden';
+      return {
+        status: contract.status,
+        failureMessageKey: contract.failureReason,
+        globalRiskScore: contract.globalRiskScore,
+      };
+    },
+    { allowedOrigins },
+  );
+  const inMemoryEventPublisher: AnalysisEventPublisher = new InMemoryAnalysisEventBus(realtimeServer);
+  const durableOutbox = isInMemory ? null : new PostgresAnalysisEventOutbox(pool);
+  const analysisEventPublisher: AnalysisEventPublisher | undefined = isInMemory
+    ? inMemoryEventPublisher
+    : (durableOutbox ?? undefined);
+  if (durableOutbox) {
+    startOutboxPublisher(pool, realtimeServer, durableOutbox);
+  }
   const analysisUseCase = new AnalyzeContractUseCase(
     contractRepository,
     textExtractor,
@@ -123,8 +268,19 @@ export function createApp(options?: { inMemory?: boolean }) {
     new InMemoryAIClassificationCache(),
     undefined,
     legalContextProvider,
+    analysisEventPublisher,
+    analysisStaging,
+    factsRepository,
   );
-  const analysisWorker = new InProcessAnalysisWorker(analysisUseCase);
+  const analysisJobQueue = isInMemory
+    ? new InMemoryAnalysisJobQueue()
+    : new PostgresAnalysisJobQueue(pool);
+  const analysisJobRunner = new AnalysisJobRunner(
+    analysisJobQueue,
+    contractRepository,
+    (input) => analysisUseCase.execute(input),
+  );
+  analysisJobRunner.start();
 
   // Startup recovery: jobs interrupted by a restart can never complete.
   void new RecoverStuckContractsUseCase(
@@ -145,7 +301,7 @@ export function createApp(options?: { inMemory?: boolean }) {
   const registerUserUseCase = new RegisterUserUseCase(userRepository);
   const loginUseCase = new LoginUseCase(userRepository);
   const refreshSessionUseCase = new RefreshSessionUseCase(userRepository);
-  const deleteAccountUseCase = new DeleteAccountUseCase(userRepository, contractRepository, fileStorage);
+  const deleteAccountUseCase = new DeleteAccountUseCase(userRepository, contractRepository, fileStorage, analysisStaging, analysisJobQueue);
   const uploadContractUseCase = new UploadContractUseCase(contractRepository, fileStorage);
   const generateObjectionLetterUseCase = new GenerateObjectionLetterUseCase(
     contractRepository,
@@ -156,6 +312,19 @@ export function createApp(options?: { inMemory?: boolean }) {
     new PdfKitGenerator(),
   );
   const updateObjectionLetterUseCase = new UpdateObjectionLetterUseCase(contractRepository);
+  const createProposalUseCase = new CreateClauseProposalUseCase(contractRepository, proposalsRepository);
+  const updateProposalUseCase = new UpdateClauseProposalUseCase(contractRepository, proposalsRepository);
+  const compareContractsUseCase = new CompareContractsUseCase(contractRepository);
+  const generateCaseReportUseCase = new GenerateCaseReportUseCase(
+    contractRepository,
+    new PdfKitGenerator(),
+    factsRepository,
+    proposalsRepository,
+  );
+  const requestReviewUseCase = new RequestReviewUseCase(contractRepository, reviewsRepository);
+  const updateReviewUseCase = new UpdateReviewUseCase(contractRepository, reviewsRepository);
+  const createReminderUseCase = new CreateReminderUseCase(contractRepository, remindersRepository);
+  const completeReminderUseCase = new CompleteReminderUseCase(contractRepository, remindersRepository);
 
   // Health probe
   app.get(['/health', '/api/health'], (_req, res) => {
@@ -201,30 +370,83 @@ export function createApp(options?: { inMemory?: boolean }) {
     loginUseCase,
     refreshSessionUseCase,
     deleteAccountUseCase,
+    onAccountDeleted: (userId) => {
+      realtimeServer.closeUserConnections(userId);
+    },
   });
 
   const contractRouter = createContractRouter({
     uploadContractUseCase,
     contractRepository,
     fileStorage,
-    analysisWorker,
+    jobQueue: analysisJobQueue,
+    eventPublisher: analysisEventPublisher,
+    staging: analysisStaging,
+    factsRepository,
+    proposalsRepository,
+    createProposalUseCase,
+    updateProposalUseCase,
+    compareContractsUseCase,
+    remindersRepository,
+    createReminderUseCase,
+    completeReminderUseCase,
+    generateCaseReportUseCase,
+    reviewsRepository,
+    requestReviewUseCase,
+    updateReviewUseCase,
     generateObjectionLetterUseCase,
     downloadObjectionLetterPdfUseCase,
     updateObjectionLetterUseCase,
   });
 
+  const realtimeRouter = createRealtimeRouter({ ticketStore });
+  registerRealtimeContext(app, {
+    ticketStore,
+    realtimeServer,
+    eventPublisher: analysisEventPublisher,
+  });
+
   // Versioned v1 routes
   app.use('/api/v1/auth', authRouter);
+  app.use('/api/v1/contracts', assistantRouter);
   app.use('/api/v1/contracts', contractRouter);
+  app.use('/api/v1/realtime', realtimeRouter);
+  app.use('/api/v1/legal', legalRadarRouter);
+  app.use('/api/legal', legalRadarRouter);
 
   // Legacy route aliases for backwards compatibility
   app.use('/api/auth', authRouter);
+  app.use('/api/contracts', assistantRouter);
   app.use('/api/contracts', contractRouter);
+  app.use('/api/realtime', realtimeRouter);
 
   // Centralized Error Handler
   app.use(errorHandler);
 
   return app;
+}
+
+function loadRadarSources(): LegalSourceDefinition[] {
+  try {
+    return loadLegalSourceCatalogSync(resolveCorpusDir());
+  } catch (error) {
+    logger.warn('Legal radar disabled: source catalog could not be loaded', {
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+    });
+    return [];
+  }
+}
+
+function resolveStagingKey(): { key: Buffer; ephemeral: boolean } {
+  if (config.STAGING_KEY) {
+    const key = Buffer.from(config.STAGING_KEY, 'base64');
+    if (key.length !== 32) {
+      throw new Error('STAGING_KEY must decode to 32 bytes.');
+    }
+    return { key, ephemeral: false };
+  }
+  logger.warn('STAGING_KEY not set: ephemeral staging key for development only');
+  return { key: crypto.randomBytes(32), ephemeral: true };
 }
 
 function loadOpenApiSpec(): Record<string, unknown> | null {

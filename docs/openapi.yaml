@@ -16,6 +16,12 @@ tags:
     description: User registration and session management
   - name: Contracts
     description: Contract uploads, analysis results, and objection letters
+  - name: Assistant
+    description: Grounded conversational assistant and guided walkthrough for one owned contract
+  - name: Legal radar
+    description: Detected changes in official Colombian legal sources
+  - name: Realtime
+    description: Single-use tickets for the analysis progress WebSocket (see docs/websocket-protocol.md)
 paths:
   /auth/register:
     post:
@@ -284,6 +290,596 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /realtime/ticket:
+    post:
+      tags: [Realtime]
+      operationId: createRealtimeTicket
+      security:
+        - bearerAuth: []
+      summary: Issue a single-use ticket for the progress WebSocket
+      description: >
+        Returns a random single-use ticket (TTL 60 s) bound to the caller.
+        Connect to /api/realtime?ticket=<ticket>. Access tokens must never be
+        placed in the WebSocket URL. See docs/websocket-protocol.md.
+      responses:
+        "201":
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ticket, expiresAt]
+                properties:
+                  ticket:
+                    type: string
+                    description: Opaque single-use ticket for the WS upgrade
+                  expiresAt:
+                    type: string
+                    format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /contracts/{id}/facts:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    put:
+      tags: [Contracts]
+      operationId: confirmContractFact
+      security:
+        - bearerAuth: []
+      summary: Confirm or correct an extracted fact before use
+      description: >
+        found/unconfirmed facts can be confirmed (no value) or corrected
+        (value required); not_found only corrected; confirmed only corrected.
+        Requires READY analysis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [key, status]
+              properties:
+                key:
+                  type: string
+                  enum: [party_a, party_b, amount, currency, periodicity, duration, start_date, end_date, termination]
+                status:
+                  type: string
+                  enum: [confirmed, corrected]
+                value:
+                  type: string
+                  maxLength: 500
+      responses:
+        "200":
+          description: Updated fact
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Fact"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/clauses/{clauseId}/proposals:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+      - name: clauseId
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      tags: [Contracts]
+      operationId: createClauseProposal
+      security:
+        - bearerAuth: []
+      summary: Propose an adjustment to a clause as a draft
+      description: Defaults the proposal to the clause suggested change; reason is required; requires READY analysis.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                proposed_text:
+                  type: string
+                  maxLength: 2000
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "201":
+          description: Proposal draft created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/proposals:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: listClauseProposals
+      security:
+        - bearerAuth: []
+      summary: List own clause proposals
+      responses:
+        "200":
+          description: Proposals of the contract
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Proposal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/proposals/{proposalId}:
+    parameters:
+      - name: proposalId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [Contracts]
+      operationId: updateClauseProposal
+      security:
+        - bearerAuth: []
+      summary: Edit a draft, accept it for the draft, or discard it
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [accept, discard]
+                proposed_text:
+                  type: string
+                  maxLength: 2000
+                reason:
+                  type: string
+                  maxLength: 1000
+      responses:
+        "200":
+          description: Updated proposal
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Proposal"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Proposal no longer editable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/compare:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+      - name: other_id
+        in: query
+        required: true
+        schema:
+          type: string
+    get:
+      tags: [Contracts]
+      operationId: compareContracts
+      security:
+        - bearerAuth: []
+      summary: Deterministic diff between two own READY contracts
+      description: >
+        Aligns clauses by similarity and reports added, removed and modified
+        (with word diff) plus reading limitations. Never legal equivalence,
+        never cross-user data.
+      responses:
+        "200":
+          description: Comparison result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [base_contract_id, other_contract_id, added, removed, modified, unchanged, truncated, limitations]
+                properties:
+                  base_contract_id:
+                    type: string
+                  other_contract_id:
+                    type: string
+                  added:
+                    type: array
+                    items:
+                      type: object
+                  removed:
+                    type: array
+                    items:
+                      type: object
+                  modified:
+                    type: array
+                    items:
+                      type: object
+                  unchanged:
+                    type: integer
+                  truncated:
+                    type: boolean
+                  limitations:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/questions:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    post:
+      tags: [Contracts]
+      operationId: askContractQuestion
+      security:
+        - bearerAuth: []
+      summary: Restricted Q&A over own READY analysis
+      description: >
+        Retrieval over stored clauses and facts with verifiable citations;
+        no generative model, no tools, no persistence. Answers "not found"
+        without evidence. Rate limited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 500
+      responses:
+        "200":
+          description: Answer with citations or not-found
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [found, answer, citations, limits]
+                properties:
+                  found:
+                    type: boolean
+                  answer:
+                    type: string
+                  citations:
+                    type: array
+                    items:
+                      type: object
+                  limits:
+                    type: array
+                    items:
+                      type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /contracts/{id}/reminders:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: listReminders
+      security:
+        - bearerAuth: []
+      summary: List own reminders
+      responses:
+        "200":
+          description: Reminders of the contract
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Contracts]
+      operationId: createReminder
+      security:
+        - bearerAuth: []
+      summary: Create an internal reminder (idempotent)
+      description: Requires future due_at with offset and IANA timezone; duplicate pending returns 200 with the existing one. No external email or channels.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, due_at, timezone]
+              properties:
+                title:
+                  type: string
+                  maxLength: 200
+                due_at:
+                  type: string
+                  format: date-time
+                timezone:
+                  type: string
+      responses:
+        "201":
+          description: Reminder created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "200":
+          description: Duplicate pending reminder returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/reminders/{reminderId}:
+    parameters:
+      - name: reminderId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [Contracts]
+      operationId: completeReminder
+      security:
+        - bearerAuth: []
+      summary: Complete a reminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [done]
+      responses:
+        "200":
+          description: Completed reminder
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/{id}/reminders.ics:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: downloadRemindersIcs
+      security:
+        - bearerAuth: []
+      summary: Download reminders as .ics (no external accounts)
+      responses:
+        "200":
+          description: Calendar file with explicit timezones
+          content:
+            text/calendar:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/{id}/report.pdf:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: downloadCaseReport
+      security:
+        - bearerAuth: []
+      summary: Download the case file with findings and warnings
+      description: Context, summary, flagged fragments, confirmed facts, proposals, letter, sources, coverage and warnings. Nothing is sent anywhere.
+      responses:
+        "200":
+          description: Case file PDF
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/{id}/review-request:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Contracts]
+      operationId: getReviewRequest
+      security:
+        - bearerAuth: []
+      summary: Latest human review status
+      responses:
+        "200":
+          description: Latest review request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Contracts]
+      operationId: requestReview
+      security:
+        - bearerAuth: []
+      summary: Prepare a human review file (idempotent)
+      description: Shows pending until a reviewer exists; no expert review is simulated and nobody is contacted.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        "201":
+          description: Review requested
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "200":
+          description: Open request returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+  /contracts/review-requests/{reviewId}:
+    parameters:
+      - name: reviewId
+        in: path
+        required: true
+        schema:
+          type: string
+    put:
+      tags: [Contracts]
+      operationId: updateReviewRequest
+      security:
+        - bearerAuth: []
+      summary: Move a review forward (owner only for now)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [in_review, reviewed]
+      responses:
+        "200":
+          description: Updated review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReviewRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Invalid transition
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
   /contracts/{id}/letter:
     parameters:
       - $ref: "#/components/parameters/ContractId"
@@ -293,7 +889,33 @@ paths:
       security:
         - bearerAuth: []
       summary: Generate and persist an objection letter
-      description: Uses only medium/high-risk clauses. Returns 422 without an AI call if none are flagged.
+      description: >
+        Uses only medium/high-risk clauses by default, or an explicit finding
+        selection. Prioritizes clarification or adjustment requests; nothing is
+        sent automatically. Returns 422 without an AI call if none are flagged.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clause_ids:
+                  type: array
+                  items:
+                    type: string
+                  minItems: 1
+                  maxItems: 100
+                  description: Explicit finding selection; defaults to all flagged clauses.
+                recipient:
+                  type: string
+                  maxLength: 120
+                purpose:
+                  type: string
+                  enum: [clarification, adjustment, other]
+                tone:
+                  type: string
+                  enum: [respectful, formal, firm]
       responses:
         "201":
           description: Letter generated
@@ -369,6 +991,201 @@ paths:
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
+  /contracts/{id}/assistant/messages:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Assistant]
+      operationId: listAssistantMessages
+      security:
+        - bearerAuth: []
+      summary: Conversation history of the contract (latest 50 messages, oldest first)
+      responses:
+        "200":
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AssistantMessage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+    post:
+      tags: [Assistant]
+      operationId: askAssistant
+      security:
+        - bearerAuth: []
+      summary: Ask the assistant about this contract
+      description: >
+        The answer is generated only from a closed context pack (clauses, facts,
+        retrieved legal provisions and recent legal updates). Inline citations
+        `[S1]` that do not exist in the pack are removed. Send
+        `Accept: text/event-stream` to receive `token` events followed by one
+        `done` event carrying the stored message; errors raised after the stream
+        opened arrive as an `error` event with a `message_key`. Failures before
+        the first token (ownership, quota, not ready) use normal HTTP statuses.
+        Rate limited per IP and user, plus a daily message quota.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question]
+              properties:
+                question:
+                  type: string
+                  minLength: 1
+                  maxLength: 1000
+      responses:
+        "200":
+          description: Assistant message (JSON) or server-sent events stream
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssistantMessage"
+            text/event-stream:
+              schema:
+                type: string
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+        "502":
+          description: AI provider unavailable (errors.ai_provider_unavailable)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      tags: [Assistant]
+      operationId: clearAssistantConversation
+      security:
+        - bearerAuth: []
+      summary: Hard-delete the conversation of this contract
+      responses:
+        "200":
+          description: Number of removed messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [removed]
+                properties:
+                  removed:
+                    type: integer
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+  /contracts/{id}/guidance:
+    parameters:
+      - $ref: "#/components/parameters/ContractId"
+    get:
+      tags: [Assistant]
+      operationId: getContractGuidance
+      security:
+        - bearerAuth: []
+      summary: Prioritized action plan and narration script
+      description: >
+        Deterministic: priorities and ordering come from code. Steps and
+        narration segments carry message keys and parameters; the client
+        translates them and reads them aloud.
+      responses:
+        "200":
+          description: Plan and narration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContractGuidance"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          description: Contract not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /legal/updates:
+    get:
+      tags: [Legal radar]
+      operationId: listLegalUpdates
+      security:
+        - bearerAuth: []
+      summary: Recent changes detected in official legal sources (last 30 days)
+      parameters:
+        - name: tema
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 40
+      responses:
+        "200":
+          description: Updates, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LegalUpdate"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+  /legal/status:
+    get:
+      tags: [Legal radar]
+      operationId: getLegalRadarStatus
+      security:
+        - bearerAuth: []
+      summary: Last successful check per monitored source
+      responses:
+        "200":
+          description: Sources and their last check time
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [id, tema, title, kind, last_checked_at]
+                  properties:
+                    id:
+                      type: string
+                    tema:
+                      type: string
+                    title:
+                      type: string
+                    kind:
+                      type: string
+                      enum: [page, feed]
+                    last_checked_at:
+                      type: [string, "null"]
+                      format: date-time
+        "401":
+          $ref: "#/components/responses/Unauthorized"
   /health:
     get:
       tags: [System]
@@ -423,6 +1240,106 @@ components:
       schema:
         type: string
   schemas:
+    AssistantMessage:
+      type: object
+      required: [id, contract_id, role, content, citations, grounded, created_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        role:
+          type: string
+          enum: [user, assistant]
+        content:
+          type: string
+        grounded:
+          type: boolean
+          description: False when the reply cites no source of the context pack.
+        created_at:
+          type: string
+          format: date-time
+        citations:
+          type: array
+          items:
+            type: object
+            required: [source_id, kind, label, quote]
+            properties:
+              source_id:
+                type: string
+                example: S1
+              kind:
+                type: string
+                enum: [clause, fact, legal, update]
+              label:
+                type: string
+              quote:
+                type: string
+              source_url:
+                type: [string, "null"]
+              verified_at:
+                type: [string, "null"]
+    GuidanceItem:
+      type: object
+      required: [id, message_key, params, clause_id]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        priority:
+          type: integer
+        message_key:
+          type: string
+        params:
+          type: object
+          additionalProperties:
+            oneOf:
+              - type: string
+              - type: number
+        clause_id:
+          type: [string, "null"]
+    ContractGuidance:
+      type: object
+      required: [contract_id, locale, global_risk_score, pending_legal_updates, steps, narration]
+      properties:
+        contract_id:
+          type: string
+        locale:
+          type: string
+        global_risk_score:
+          type: integer
+        pending_legal_updates:
+          type: integer
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuidanceItem"
+        narration:
+          type: array
+          items:
+            $ref: "#/components/schemas/GuidanceItem"
+    LegalUpdate:
+      type: object
+      required: [id, source_id, tema, kind, title, source_url, detected_at]
+      properties:
+        id:
+          type: string
+        source_id:
+          type: string
+        tema:
+          type: string
+        kind:
+          type: string
+          enum: [norm_change, news]
+        title:
+          type: string
+        source_url:
+          type: string
+          format: uri
+        detected_at:
+          type: string
+          format: date-time
     RegisterRequest:
       type: object
       required: [name, email, password]
@@ -492,6 +1409,15 @@ components:
           type: string
         locale:
           type: string
+        user_role:
+          type: string
+          enum: [tenant, consumer, employee, other]
+        coverage_status:
+          type: string
+          enum: [supported, experimental, unsupported]
+          description: Analysis coverage for this jurisdiction and type; nothing is supported without recorded legal review.
+        coverage_rules_version:
+          type: string
         status:
           $ref: "#/components/schemas/ContractStatus"
         global_risk_score:
@@ -509,6 +1435,11 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Clause"
+        facts:
+          type: array
+          description: Key facts with evidence; present on detail reads when analysis stored them.
+          items:
+            $ref: "#/components/schemas/Fact"
     Clause:
       type: object
       required: [id, order_index, original_text, risk_level, confidence, plain_explanation, why_risky, legal_basis, suggested_change]
@@ -542,6 +1473,105 @@ components:
                 type: string
         suggested_change:
           type: [string, "null"]
+        page_number:
+          type: [integer, "null"]
+          description: Source page when reliably known; null otherwise, never invented.
+        start_offset:
+          type: [integer, "null"]
+        end_offset:
+          type: [integer, "null"]
+        requires_review:
+          type: boolean
+          description: True when model confidence stays below 0.6 after recheck; independent of risk level.
+    Fact:
+      type: object
+      required: [key, value, status, evidence_clause_id, evidence_quote]
+      properties:
+        key:
+          type: string
+          enum: [party_a, party_b, amount, currency, periodicity, duration, start_date, end_date, termination]
+        value:
+          type: [string, "null"]
+        status:
+          type: string
+          enum: [found, not_found, unconfirmed, confirmed, corrected]
+          description: Extracted states plus user-confirmed/corrected; confirm before use in documents.
+        evidence_clause_id:
+          type: [string, "null"]
+        evidence_quote:
+          type: [string, "null"]
+    Proposal:
+      type: object
+      required: [id, contract_id, clause_id, original_text, proposed_text, reason, status, version, created_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        clause_id:
+          type: string
+        original_text:
+          type: string
+        proposed_text:
+          type: string
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [draft, accepted, discarded]
+          description: Accepting keeps the proposal in the user draft; it never changes the counterparty contract.
+        version:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    Reminder:
+      type: object
+      required: [id, contract_id, user_id, title, due_at, timezone, status, created_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        user_id:
+          type: string
+        title:
+          type: string
+        due_at:
+          type: string
+          format: date-time
+          description: Unambiguous instant; naive datetimes are rejected.
+        timezone:
+          type: string
+          example: America/Bogota
+        status:
+          type: string
+          enum: [pending, done]
+        created_at:
+          type: string
+          format: date-time
+    ReviewRequest:
+      type: object
+      required: [id, contract_id, user_id, status, note, created_at, updated_at]
+      properties:
+        id:
+          type: string
+        contract_id:
+          type: string
+        user_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_review, reviewed]
+          description: Owner-only transitions while no revocable reviewer role exists.
+        note:
+          type: [string, "null"]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
     ObjectionLetter:
       type: object
       required: [id, contract_id, locale, content, created_at]
@@ -554,6 +1584,19 @@ components:
           type: string
         content:
           type: string
+        recipient:
+          type: [string, "null"]
+        purpose:
+          type: string
+          enum: [clarification, adjustment, other]
+        tone:
+          type: string
+          enum: [respectful, formal, firm]
+        selected_clause_ids:
+          type: array
+          items:
+            type: string
+          description: Explicit finding selection; empty means the default flagged set at generation time.
         created_at:
           type: string
           format: date-time

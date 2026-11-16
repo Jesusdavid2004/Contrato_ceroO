@@ -11,6 +11,7 @@ export class PostgresContractRepository implements ContractRepository {
   public async findById(id: string): Promise<Contract | null> {
     const contractRes = await this.pool.query(
       `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
+              user_role, coverage_status, coverage_rules_version,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts WHERE id = $1`,
       [id],
@@ -20,7 +21,8 @@ export class PostgresContractRepository implements ContractRepository {
 
     const clausesRes = await this.pool.query(
       `SELECT id, contract_id, order_index, original_text, risk_level, confidence,
-              plain_explanation, why_risky, legal_basis, suggested_change
+              plain_explanation, why_risky, legal_basis, suggested_change,
+              page_number, start_offset, end_offset, requires_review
        FROM clauses WHERE contract_id = $1 ORDER BY order_index ASC`,
       [id],
     );
@@ -38,6 +40,10 @@ export class PostgresContractRepository implements ContractRepository {
           whyRisky: c.why_risky,
           legalBasis: c.legal_basis || [],
           suggestedChange: c.suggested_change,
+          pageNumber: c.page_number ?? null,
+          startOffset: c.start_offset ?? null,
+          endOffset: c.end_offset ?? null,
+          requiresReview: c.requires_review ?? undefined,
         }),
     );
 
@@ -50,6 +56,9 @@ export class PostgresContractRepository implements ContractRepository {
       contractType: row.contract_type,
       jurisdiction: row.jurisdiction,
       locale: row.locale,
+      userRole: row.user_role ?? undefined,
+      coverageStatus: row.coverage_status ?? undefined,
+      coverageRulesVersion: row.coverage_rules_version ?? undefined,
       status: row.status,
       globalRiskScore: row.global_risk_score,
       uploadedAt: new Date(row.uploaded_at),
@@ -61,6 +70,7 @@ export class PostgresContractRepository implements ContractRepository {
   public async findByOwnerId(ownerId: string): Promise<Contract[]> {
     const res = await this.pool.query(
       `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
+              user_role, coverage_status, coverage_rules_version,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts WHERE user_id = $1 ORDER BY uploaded_at DESC`,
       [ownerId],
@@ -77,6 +87,9 @@ export class PostgresContractRepository implements ContractRepository {
           contractType: row.contract_type,
           jurisdiction: row.jurisdiction,
           locale: row.locale,
+          userRole: row.user_role ?? undefined,
+          coverageStatus: row.coverage_status ?? undefined,
+          coverageRulesVersion: row.coverage_rules_version ?? undefined,
           status: row.status,
           globalRiskScore: row.global_risk_score,
           uploadedAt: new Date(row.uploaded_at),
@@ -93,12 +106,16 @@ export class PostgresContractRepository implements ContractRepository {
 
       await client.query(
         `INSERT INTO contracts (id, user_id, title, file_name, storage_uri, contract_type, jurisdiction,
-                               locale, status, global_risk_score, uploaded_at, failure_reason)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                               locale, user_role, coverage_status, coverage_rules_version,
+                               status, global_risk_score, uploaded_at, failure_reason)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
          ON CONFLICT (id) DO UPDATE SET
            status = EXCLUDED.status,
            global_risk_score = EXCLUDED.global_risk_score,
            failure_reason = EXCLUDED.failure_reason,
+           user_role = EXCLUDED.user_role,
+           coverage_status = EXCLUDED.coverage_status,
+           coverage_rules_version = EXCLUDED.coverage_rules_version,
            storage_uri = COALESCE(EXCLUDED.storage_uri, contracts.storage_uri),
            status_updated_at = NOW()`,
         [
@@ -110,6 +127,9 @@ export class PostgresContractRepository implements ContractRepository {
           contract.contractType,
           contract.jurisdiction,
           contract.locale,
+          contract.userRole,
+          contract.coverageStatus,
+          contract.coverageRulesVersion,
           contract.status,
           contract.globalRiskScore,
           contract.uploadedAt,
@@ -123,8 +143,9 @@ export class PostgresContractRepository implements ContractRepository {
         for (const c of contract.clauses) {
           await client.query(
             `INSERT INTO clauses (id, contract_id, order_index, original_text, risk_level,
-                                 confidence, plain_explanation, why_risky, legal_basis, suggested_change)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                                 confidence, plain_explanation, why_risky, legal_basis, suggested_change,
+                                 page_number, start_offset, end_offset, requires_review)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
             [
               c.id,
               contract.id,
@@ -136,6 +157,10 @@ export class PostgresContractRepository implements ContractRepository {
               c.whyRisky,
               JSON.stringify(c.legalBasis),
               c.suggestedChange,
+              c.pageNumber,
+              c.startOffset,
+              c.endOffset,
+              c.requiresReview,
             ],
           );
         }
@@ -162,6 +187,7 @@ export class PostgresContractRepository implements ContractRepository {
   public async findStuckContracts(olderThan: Date): Promise<Contract[]> {
     const res = await this.pool.query(
       `SELECT id, user_id, title, file_name, storage_uri, contract_type, jurisdiction, locale,
+              user_role, coverage_status, coverage_rules_version,
               status, global_risk_score, uploaded_at, failure_reason
        FROM contracts
        WHERE status IN ('EXTRACTING', 'ANALYZING') AND status_updated_at < $1
@@ -180,6 +206,9 @@ export class PostgresContractRepository implements ContractRepository {
           contractType: row.contract_type,
           jurisdiction: row.jurisdiction,
           locale: row.locale,
+          userRole: row.user_role ?? undefined,
+          coverageStatus: row.coverage_status ?? undefined,
+          coverageRulesVersion: row.coverage_rules_version ?? undefined,
           status: row.status,
           globalRiskScore: row.global_risk_score,
           uploadedAt: new Date(row.uploaded_at),
@@ -195,15 +224,26 @@ export class PostgresContractRepository implements ContractRepository {
 
   public async saveObjectionLetter(letter: ObjectionLetter): Promise<void> {
     await this.pool.query(
-      `INSERT INTO objection_letters (contract_id, locale, content, created_at)
-       VALUES ($1, $2, $3, $4)`,
-      [letter.contractId, letter.locale, letter.content, letter.createdAt],
+      `INSERT INTO objection_letters
+        (contract_id, locale, content, created_at, recipient, purpose, tone, selected_clause_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        letter.contractId,
+        letter.locale,
+        letter.content,
+        letter.createdAt,
+        letter.recipient,
+        letter.purpose,
+        letter.tone,
+        JSON.stringify(letter.selectedClauseIds),
+      ],
     );
   }
 
   public async getObjectionLetter(contractId: string): Promise<ObjectionLetter | null> {
     const res = await this.pool.query(
-      `SELECT id, contract_id, locale, content, created_at
+      `SELECT id, contract_id, locale, content, created_at,
+              recipient, purpose, tone, selected_clause_ids
        FROM objection_letters WHERE contract_id = $1 ORDER BY created_at DESC, id DESC LIMIT 1`,
       [contractId],
     );
@@ -214,6 +254,10 @@ export class PostgresContractRepository implements ContractRepository {
       contractId: row.contract_id,
       locale: row.locale,
       content: row.content,
+      recipient: row.recipient,
+      purpose: row.purpose ?? 'clarification',
+      tone: row.tone ?? 'respectful',
+      selectedClauseIds: Array.isArray(row.selected_clause_ids) ? row.selected_clause_ids : [],
       createdAt: new Date(row.created_at),
     });
   }
@@ -275,6 +319,10 @@ export class InMemoryContractRepository implements ContractRepository {
         contractId: letter.contractId,
         locale: letter.locale,
         content: letter.content,
+        recipient: letter.recipient,
+        purpose: letter.purpose,
+        tone: letter.tone,
+        selectedClauseIds: letter.selectedClauseIds,
         createdAt: letter.createdAt,
       });
     this.letters.set(stored.contractId, stored);

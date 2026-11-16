@@ -4,27 +4,65 @@ import type { UploadContractUseCase } from '../../application/use-cases/UploadCo
 import type { ContractRepository } from '../../domain/repositories/ContractRepository';
 import { requireAuth } from '../middleware/authMiddleware';
 import { aiIpLimiter, aiUserLimiter, uploadLimiter } from '../middleware/rateLimiter';
-import { ContractNotFoundError, ContractOwnershipError } from '../../domain/exceptions/index';
-import type { InProcessAnalysisWorker } from '../../infrastructure/services/InProcessAnalysisWorker';
+import {
+  ContractNotFoundError,
+  ContractOwnershipError,
+  ContractNotReadyError,
+  FactNotFoundError,
+  FactTransitionError,
+  ClauseNotFoundError,
+  ReviewNotFoundError,
+} from '../../domain/exceptions/index';
+import type { AnalysisJobQueue } from '../../domain/services/AnalysisJobs';
 import { FileValidator } from '../../infrastructure/services/FileValidator';
 import type { GenerateObjectionLetterUseCase } from '../../application/use-cases/GenerateObjectionLetterUseCase';
 import type { DownloadObjectionLetterPdfUseCase } from '../../application/use-cases/DownloadObjectionLetterPdfUseCase';
 import type { UpdateObjectionLetterUseCase } from '../../application/use-cases/UpdateObjectionLetterUseCase';
 import type { FileStorage } from '../../domain/services/InfrastructureInterfaces';
+import type { AnalysisEventPublisher } from '../../domain/services/AnalysisEventPublisher';
+import type { AnalysisStaging } from '../../domain/services/AnalysisStaging';
+import { stagingUriFor } from '../../domain/services/AnalysisStaging';
+import type { FactsRepository } from '../../domain/repositories/FactsRepository';
+import type { RemindersRepository } from '../../domain/repositories/RemindersRepository';
+import type { ProposalsRepository } from '../../domain/repositories/ProposalsRepository';
+import type { CreateClauseProposalUseCase, UpdateClauseProposalUseCase } from '../../application/use-cases/ProposalUseCases';
+import { config } from '../../shared/config';
+import { logger } from '../../shared/logger';
 
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 });
 
-import { uploadContractBodySchema, updateLetterBodySchema } from '../schemas/contractSchemas';
+import { uploadContractBodySchema, updateLetterBodySchema, generateLetterBodySchema, confirmFactBodySchema, createProposalBodySchema, updateProposalBodySchema, compareQuerySchema, askQuestionBodySchema, createReminderBodySchema, completeReminderBodySchema, requestReviewBodySchema, updateReviewBodySchema } from '../schemas/contractSchemas';
+import { answerContractQuestion } from '../../domain/services/ContractQuestions';
+import type { CompareContractsUseCase } from '../../application/use-cases/CompareContractsUseCase';
+import type { CreateReminderUseCase, CompleteReminderUseCase } from '../../application/use-cases/ReminderUseCases';
+import type { GenerateCaseReportUseCase } from '../../application/use-cases/ReportUseCases';
+import type { ReviewRequestsRepository } from '../../domain/repositories/ReviewRequestsRepository';
+import type { RequestReviewUseCase, UpdateReviewUseCase } from '../../application/use-cases/ReviewUseCases';
+import { buildIcsCalendar } from '../../domain/services/CalendarExport';
 import { validateBody } from '../middleware/validationMiddleware';
 
 export function createContractRouter(deps: {
   uploadContractUseCase: UploadContractUseCase;
   contractRepository: ContractRepository;
   fileStorage?: FileStorage;
-  analysisWorker?: InProcessAnalysisWorker;
+  jobQueue?: AnalysisJobQueue;
+  eventPublisher?: AnalysisEventPublisher;
+  staging?: AnalysisStaging;
+  factsRepository?: FactsRepository;
+  proposalsRepository?: ProposalsRepository;
+  createProposalUseCase?: CreateClauseProposalUseCase;
+  updateProposalUseCase?: UpdateClauseProposalUseCase;
+  compareContractsUseCase?: CompareContractsUseCase;
+  remindersRepository?: RemindersRepository;
+  createReminderUseCase?: CreateReminderUseCase;
+  completeReminderUseCase?: CompleteReminderUseCase;
+  generateCaseReportUseCase?: GenerateCaseReportUseCase;
+  reviewsRepository?: ReviewRequestsRepository;
+  requestReviewUseCase?: RequestReviewUseCase;
+  updateReviewUseCase?: UpdateReviewUseCase;
   generateObjectionLetterUseCase: GenerateObjectionLetterUseCase;
   downloadObjectionLetterPdfUseCase: DownloadObjectionLetterPdfUseCase;
   updateObjectionLetterUseCase: UpdateObjectionLetterUseCase;
@@ -58,15 +96,71 @@ export function createContractRouter(deps: {
           jurisdiction: validatedBody.jurisdiction as any,
           locale: validatedBody.locale,
           title: validatedBody.title,
+          userRole: validatedBody.user_role || validatedBody.userRole,
         });
-        if (deps.analysisWorker) {
-          const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
-          deps.analysisWorker.enqueue({
+        if (deps.eventPublisher) {
+          try {
+            await deps.eventPublisher.publish({
+              contractId: result.id,
+              userId: req.user!.id,
+              jobId: result.id,
+              type: 'stage',
+              payload: { status: 'UPLOADED' },
+              occurredAt: new Date(),
+            });
+          } catch (error) {
+            logger.error('Upload event publish failed', {
+              contractId: result.id,
+              errorName: error instanceof Error ? error.name : 'UnknownError',
+            });
+          }
+        }
+        if (!deps.jobQueue || !deps.staging) {
+          throw new Error('Analysis pipeline is not wired in this router.');
+        }
+        const validatedFile = FileValidator.validate(req.file.buffer, req.file.originalname);
+        try {
+          await deps.staging.stage(
+            result.id,
+            { buffer: validatedFile.buffer, mimeType: validatedFile.detectedMime },
+            config.STAGING_TTL_MS,
+          );
+        } catch (error) {
+          logger.error('Analysis staging failed', {
+            contractId: result.id,
+            errorName: error instanceof Error ? error.name : 'UnknownError',
+          });
+        }
+        try {
+          await deps.jobQueue.enqueue({
             contractId: result.id,
             userId: req.user!.id,
-            fileBuffer: validatedFile.buffer,
+            stagingKey: result.id,
             mimeType: validatedFile.detectedMime,
           });
+        } catch (error) {
+          // Cola caida: estado terminal honesto en vez de UPLOADED eterno.
+          logger.error('Analysis enqueue failed', {
+            contractId: result.id,
+            errorName: error instanceof Error ? error.name : 'UnknownError',
+          });
+          const failed = await deps.contractRepository.findById(result.id);
+          if (failed && failed.ownerId === req.user!.id) {
+            failed.markFailed('errors.analysis_failed');
+            await deps.contractRepository.save(failed);
+            try {
+              await deps.eventPublisher?.publish({
+                contractId: failed.id,
+                userId: req.user!.id,
+                jobId: failed.id,
+                type: 'failed',
+                payload: { status: 'FAILED', failureMessageKey: 'errors.analysis_failed' },
+                occurredAt: new Date(),
+              });
+            } catch {
+              // El estado ya quedo persistido; el aviso es mejor esfuerzo.
+            }
+          }
         }
 
         res.status(201).json(result);
@@ -119,11 +213,381 @@ export function createContractRouter(deps: {
         throw new ContractOwnershipError(contractId);
       }
 
-      res.status(200).json(contract.toJSON());
+      const facts = await deps.factsRepository?.getFacts(contractId) ?? [];
+      res.status(200).json({
+        ...contract.toJSON(),
+        facts: facts.map((fact) => ({
+          key: fact.key,
+          value: fact.value,
+          status: fact.status,
+          evidence_clause_id: fact.evidenceClauseId,
+          evidence_quote: fact.evidenceQuote,
+        })),
+      });
     } catch (err) {
       next(err);
     }
   });
+
+  // PUT /:id/facts (Confirm or correct an extracted fact before use)
+  router.put('/:id/facts', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const body = confirmFactBodySchema.parse(req.body || {});
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      if (contract.status !== 'READY') {
+        throw new ContractNotReadyError(contractId);
+      }
+      if (!deps.factsRepository) {
+        throw new FactNotFoundError(contractId, body.key);
+      }
+      const current = (await deps.factsRepository.getFacts(contractId))
+        .find((fact) => fact.key === body.key);
+      if (!current) {
+        throw new FactNotFoundError(contractId, body.key);
+      }
+      const nextValue = body.status === 'corrected' ? (body.value ?? null) : current.value;
+      if (body.status === 'corrected' && !nextValue) {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      if (body.status === 'confirmed' && body.value !== undefined) {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      if (current.status === 'not_found' && body.status === 'confirmed') {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      if (current.status === 'confirmed' && body.status === 'confirmed') {
+        throw new FactTransitionError(body.key, body.status);
+      }
+      const updated = await deps.factsRepository.updateFact(
+        contractId,
+        body.key,
+        nextValue,
+        body.status,
+      );
+      if (!updated) {
+        throw new FactNotFoundError(contractId, body.key);
+      }
+      res.status(200).json({
+        key: updated.key,
+        value: updated.value,
+        status: updated.status,
+        evidence_clause_id: updated.evidenceClauseId,
+        evidence_quote: updated.evidenceQuote,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /:id/clauses/:clauseId/proposals (Propose an adjustment as draft)
+  router.post(
+    '/:id/clauses/:clauseId/proposals',
+    requireAuth,
+    validateBody(createProposalBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.createProposalUseCase || !deps.proposalsRepository) {
+          throw new Error('Clause proposals are not wired in this router.');
+        }
+        const proposal = await deps.createProposalUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+          clauseId: String(req.params.clauseId),
+          proposedText: req.body.proposed_text,
+          reason: req.body.reason,
+        });
+        res.status(201).json(proposal.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/proposals (List own clause proposals)
+  router.get('/:id/proposals', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const proposals = await deps.proposalsRepository?.listByContract(contractId) ?? [];
+      res.status(200).json(proposals.map((proposal) => proposal.toJSON()));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /proposals/:proposalId (Edit draft, accept for draft, or discard)
+  router.put(
+    '/proposals/:proposalId',
+    requireAuth,
+    validateBody(updateProposalBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.updateProposalUseCase) {
+          throw new Error('Clause proposals are not wired in this router.');
+        }
+        const proposal = await deps.updateProposalUseCase.execute({
+          proposalId: String(req.params.proposalId),
+          userId: req.user!.id,
+          action: req.body.action,
+          proposedText: req.body.proposed_text,
+          reason: req.body.reason,
+        });
+        res.status(200).json(proposal.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/compare?other_id= (Deterministic diff between own contracts)
+  router.get('/:id/compare', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const query = compareQuerySchema.parse(req.query);
+      if (!deps.compareContractsUseCase) {
+        throw new Error('Contract comparison is not wired in this router.');
+      }
+      const comparison = await deps.compareContractsUseCase.execute({
+        baseContractId: String(req.params.id),
+        otherContractId: query.other_id,
+        userId: req.user!.id,
+      });
+      res.status(200).json({
+        base_contract_id: comparison.baseContractId,
+        other_contract_id: comparison.otherContractId,
+        added: comparison.added,
+        removed: comparison.removed,
+        modified: comparison.modified.map((entry) => ({
+          base_clause_id: entry.baseClauseId,
+          other_clause_id: entry.otherClauseId,
+          similarity: entry.similarity,
+          text_diff: entry.textDiff.map((segment) => ({ type: segment.type, text: segment.text })),
+        })),
+        unchanged: comparison.unchanged,
+        truncated: comparison.truncated,
+        limitations: comparison.limitations,
+      });
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /:id/questions (Restricted Q&A over own analysis, no LLM)
+  router.post(
+    '/:id/questions',
+    requireAuth,
+    aiIpLimiter,
+    aiUserLimiter,
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const body = askQuestionBodySchema.parse(req.body || {});
+        const contractId = String(req.params.id);
+        const contract = await deps.contractRepository.findById(contractId);
+        if (!contract) {
+          throw new ContractNotFoundError(contractId);
+        }
+        if (contract.ownerId !== req.user!.id) {
+          throw new ContractOwnershipError(contractId);
+        }
+        if (contract.status !== 'READY') {
+          throw new ContractNotReadyError(contractId);
+        }
+        const facts = await deps.factsRepository?.getFacts(contractId) ?? [];
+        const result = answerContractQuestion({
+          question: body.question,
+          locale: contract.locale,
+          clauses: [...contract.clauses],
+          facts,
+        });
+        res.status(200).json(result);
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // POST /:id/reminders (Internal reminder with explicit timezone)
+  router.post(
+    '/:id/reminders',
+    requireAuth,
+    validateBody(createReminderBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.createReminderUseCase) {
+          throw new Error('Reminders are not wired in this router.');
+        }
+        const { reminder, created } = await deps.createReminderUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+          title: req.body.title,
+          dueAt: new Date(req.body.due_at),
+          timezone: req.body.timezone,
+        });
+        res.status(created ? 201 : 200).json(reminder.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/reminders (List own reminders)
+  router.get('/:id/reminders', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const reminders = await deps.remindersRepository?.listByContract(contractId) ?? [];
+      res.status(200).json(reminders.map((reminder) => reminder.toJSON()));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /reminders/:reminderId (Complete a reminder)
+  router.put(
+    '/reminders/:reminderId',
+    requireAuth,
+    validateBody(completeReminderBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.completeReminderUseCase) {
+          throw new Error('Reminders are not wired in this router.');
+        }
+        const reminder = await deps.completeReminderUseCase.execute({
+          reminderId: String(req.params.reminderId),
+          userId: req.user!.id,
+        });
+        res.status(200).json(reminder.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/reminders.ics (Download calendar file, no external accounts)
+  router.get('/:id/reminders.ics', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const reminders = await deps.remindersRepository?.listByContract(contractId) ?? [];
+      const filename = `reminders-${contractId.slice(0, 40).replace(/[^a-zA-Z0-9_-]+/g, '-')}.ics`;
+      res
+        .status(200)
+        .type('text/calendar')
+        .attachment(filename)
+        .send(buildIcsCalendar(reminders));
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // GET /:id/report.pdf (Case file: context, findings, proposals, sources)
+  router.get('/:id/report.pdf', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      if (!deps.generateCaseReportUseCase) {
+        throw new Error('Case report is not wired in this router.');
+      }
+      const report = await deps.generateCaseReportUseCase.execute({
+        contractId: String(req.params.id),
+        userId: req.user!.id,
+      });
+      res
+        .status(200)
+        .type('application/pdf')
+        .attachment(report.filename)
+        .send(report.buffer);
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // POST /:id/review-request (Prepare a human review file, idempotent)
+  router.post(
+    '/:id/review-request',
+    requireAuth,
+    validateBody(requestReviewBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.requestReviewUseCase) {
+          throw new Error('Review requests are not wired in this router.');
+        }
+        const { review, created } = await deps.requestReviewUseCase.execute({
+          contractId: String(req.params.id),
+          userId: req.user!.id,
+          note: req.body.note,
+        });
+        res.status(created ? 201 : 200).json(review.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
+
+  // GET /:id/review-request (Latest review status)
+  router.get('/:id/review-request', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const contractId = String(req.params.id);
+      const contract = await deps.contractRepository.findById(contractId);
+      if (!contract) {
+        throw new ContractNotFoundError(contractId);
+      }
+      if (contract.ownerId !== req.user!.id) {
+        throw new ContractOwnershipError(contractId);
+      }
+      const review = await deps.reviewsRepository?.latestForContract(contractId);
+      if (!review) {
+        throw new ReviewNotFoundError(contractId);
+      }
+      res.status(200).json(review.toJSON());
+    } catch (err) {
+      next(err);
+    }
+  });
+
+  // PUT /review-requests/:reviewId (Move review forward)
+  router.put(
+    '/review-requests/:reviewId',
+    requireAuth,
+    validateBody(updateReviewBodySchema),
+    async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (!deps.updateReviewUseCase) {
+          throw new Error('Review requests are not wired in this router.');
+        }
+        const review = await deps.updateReviewUseCase.execute({
+          reviewId: String(req.params.reviewId),
+          userId: req.user!.id,
+          status: req.body.status,
+        });
+        res.status(200).json(review.toJSON());
+      } catch (err) {
+        next(err);
+      }
+    },
+  );
 
   // DELETE /:id (Delete contract with ownership check)
   router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
@@ -143,6 +607,14 @@ export function createContractRouter(deps: {
         }
         await deps.fileStorage.delete(contractId);
       }
+      if (deps.staging) {
+        try {
+          await deps.staging.remove(stagingUriFor(contractId));
+        } catch {
+          // El borrado del contrato no depende del staging.
+        }
+      }
+      await deps.jobQueue?.cancelForContract(contractId);
       await deps.contractRepository.delete(contractId);
       res.status(200).json({ message: 'Contract deleted' });
     } catch (err) {
@@ -157,9 +629,14 @@ export function createContractRouter(deps: {
     aiUserLimiter,
     async (req: Request, res: Response, next: NextFunction) => {
       try {
+        const body = generateLetterBodySchema.parse(req.body || {});
         const letter = await deps.generateObjectionLetterUseCase.execute({
           contractId: String(req.params.id),
           userId: req.user!.id,
+          clauseIds: body.clause_ids,
+          recipient: body.recipient,
+          purpose: body.purpose,
+          tone: body.tone,
         });
         res.status(201).json(letter.toJSON());
       } catch (err) {

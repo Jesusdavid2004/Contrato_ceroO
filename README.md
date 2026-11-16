@@ -97,6 +97,16 @@ original contract file. See [the live demo script](./docs/demo-script.md).
   a localized PDF.
 - View contract history, delete a contract, and permanently delete an account.
 - Switch English/Spanish and light/dark themes (persisted, no flash on load).
+- **Contract assistant:** chat with a contract, streamed and cited. Answers come
+  only from the analysis, the extracted facts, retrieved laws and recent legal
+  updates; every claim carries a numbered source and ungrounded answers are
+  flagged. Ask about a single clause from its card, or dictate by voice.
+- **Guided walkthrough:** a prioritized "what to do now" plan that the browser
+  reads aloud while highlighting the clause being narrated; it follows the
+  active language.
+- **Legal radar:** scheduled checks of official Colombian sources detect a
+  changed norm (`/radar`); press items are labeled unofficial. See
+  [ADR 0009](./docs/adr/0009-contract-assistant-and-legal-radar.md).
 - Optional Colombian legal-context retrieval with pgvector; it is disabled by
   default and is not a substitute for checking official legal sources.
   Verified citations link to official sources with tema badge and date; see
@@ -109,7 +119,8 @@ original contract file. See [the live demo script](./docs/demo-script.md).
 - [API overview](./docs/api.md) and [OpenAPI 3.1 contract](./docs/openapi.yaml)
 - [Security notes and production blockers](./docs/security.md)
 - [Demo walkthrough](./docs/demo-script.md)
-- [Offline evaluation and limitations](./docs/evaluation.md)
+- [Offline evaluation and limitations](./docs/evaluation.md) and the
+  [assistant evaluation](./docs/evaluation-assistant.md)
 - [Runtime validation evidence](./docs/runtime-validation-report.md)
 - [Architecture discovery diagrams](./.github/modernize/assessment/engines/facts/architecture-diagram.md)
 - [Architecture decision records](./docs/adr/)
@@ -148,6 +159,12 @@ put real contract data or production credentials into the demo environment.
 | `AI_PROVIDER` | `gemini`, `local` or `fake` (empty = auto) | `local` |
 | `GEMINI_API_KEY` | Free-tier hosted refiner + letter writer ([AI Studio](https://aistudio.google.com/apikey)) | Empty; local model does everything |
 | `RAG_ENABLED` | Enable legal provision retrieval | `false` |
+| `GEMINI_MODEL_ASSISTANT` | Model for assistant answers | `gemini-3.5-flash` |
+| `AI_MAX_TOKENS_ASSISTANT` | Output token cap per assistant answer | `900` |
+| `AI_ASSISTANT_TIMEOUT_MS` | Time limit for one streamed answer | `60000` |
+| `ASSISTANT_DAILY_MESSAGES` | Assistant messages per user per UTC day | `60` |
+| `LEGAL_RADAR_ENABLED` | Poll official sources for legal changes | `true` |
+| `LEGAL_RADAR_INTERVAL_MINUTES` | Minutes between radar runs (minimum 5) | `60` |
 | `CONTRACT_FILE_RETENTION` | Original upload retention | `none` |
 | `DEMO_USER_EMAIL` | Local synthetic demo account | `demo@example.test` |
 | `DEMO_USER_PASSWORD` | Local demo password; at least 12 characters | Must be set |
