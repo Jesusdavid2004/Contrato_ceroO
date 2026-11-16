@@ -1,6 +1,7 @@
 export type AssistantRole = 'user' | 'assistant';
 
-export type AssistantSourceKind = 'clause' | 'fact' | 'legal' | 'update';
+/** `update`: an official source changed. `news`: a press item, never presented as law. */
+export type AssistantSourceKind = 'clause' | 'fact' | 'legal' | 'update' | 'news';
 
 export interface AssistantCitation {
   sourceId: string;

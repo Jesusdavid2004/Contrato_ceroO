@@ -30,7 +30,6 @@ export const ASSISTANT_HISTORY_LIMIT = 8;
 export const LEGAL_UPDATE_LOOKBACK_DAYS = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const MAX_CONTEXT_UPDATES = 3;
-const CITATION_QUOTE_LENGTH = 220;
 
 export interface AskAssistantInput {
   contractId: string;
@@ -53,7 +52,7 @@ function toCitation(source: AssistantSource): AssistantCitation {
     sourceId: source.id,
     kind: source.kind,
     label: source.label,
-    quote: source.text.slice(0, CITATION_QUOTE_LENGTH),
+    quote: source.quote,
     sourceUrl: source.sourceUrl,
     verifiedAt: source.verifiedAt,
   };

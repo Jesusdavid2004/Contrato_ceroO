@@ -44,7 +44,7 @@ function relevance(question: Set<string>, source: AssistantSource): number {
 }
 
 function quote(source: AssistantSource): string {
-  const flat = source.text.replace(/\s+/g, ' ').trim();
+  const flat = source.quote.replace(/\s+/g, ' ').trim();
   const clipped = flat.length <= MAX_QUOTE_LENGTH ? flat : `${flat.slice(0, MAX_QUOTE_LENGTH)}...`;
   return `- ${clipped} [${source.id}]`;
 }

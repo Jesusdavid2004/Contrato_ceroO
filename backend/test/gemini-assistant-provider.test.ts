@@ -20,7 +20,7 @@ function sseResponse(events: unknown[], status = 200): Response {
 
 const request = {
   locale: 'es', contractType: 'LEASE', jurisdiction: 'CO', question: 'Que debo hacer?',
-  history: [], sources: [{ id: 'S1', kind: 'clause' as const, label: 'c', text: 'texto' }],
+  history: [], sources: [{ id: 'S1', kind: 'clause' as const, label: 'c', text: 'texto', quote: 'texto' }],
 };
 
 function provider(fetchImpl: typeof fetch) {

@@ -16,7 +16,10 @@ export interface AssistantSource {
   id: string;
   kind: AssistantSourceKind;
   label: string;
+  /** Text given to the model (may carry instructions and formatting). */
   text: string;
+  /** Clean excerpt shown to the user as the citation. */
+  quote: string;
   sourceUrl?: string;
   verifiedAt?: string;
 }
@@ -44,7 +47,6 @@ export const MAX_PROVISION_SOURCES = 5;
 export const MAX_UPDATE_SOURCES = 3;
 export const MAX_SOURCE_TEXT_LENGTH = 700;
 const MIN_TOKEN_LENGTH = 3;
-const ISO_DATE_LENGTH = 10;
 const DIACRITICS = /[̀-ͯ]/g;
 
 export function tokenize(text: string): Set<string> {
@@ -64,6 +66,13 @@ function overlapScore(question: Set<string>, text: string): number {
     if (question.has(token)) score += 1;
   }
   return score;
+}
+
+export const MAX_QUOTE_LENGTH = 220;
+
+function clipQuote(text: string): string {
+  const flat = text.replace(/\s+/g, ' ').trim();
+  return flat.length <= MAX_QUOTE_LENGTH ? flat : `${flat.slice(0, MAX_QUOTE_LENGTH)}...`;
 }
 
 function clip(text: string): string {
@@ -100,11 +109,21 @@ export function buildAssistantContext(input: AssistantContextInput): AssistantSo
   const drafts: Array<Omit<AssistantSource, 'id'>> = [];
 
   for (const clause of rankClauses(input.clauses, question)) {
-    drafts.push({ kind: 'clause', label: `clause:${clause.id}`, text: describeClause(clause) });
+    drafts.push({
+      kind: 'clause',
+      label: `clause:${clause.id}`,
+      text: describeClause(clause),
+      quote: clipQuote(clause.originalText),
+    });
   }
   for (const fact of input.facts) {
     if (!fact.value) continue;
-    drafts.push({ kind: 'fact', label: `fact:${fact.key}`, text: `${fact.key} = ${fact.value} (${fact.status})` });
+    drafts.push({
+      kind: 'fact',
+      label: `fact:${fact.key}`,
+      text: `${fact.key} = ${fact.value} (${fact.status})`,
+      quote: clipQuote(fact.evidenceQuote ?? fact.value),
+    });
   }
 
   const rankedProvisions = [...input.provisions]
@@ -119,17 +138,18 @@ export function buildAssistantContext(input: AssistantContextInput): AssistantSo
       kind: 'legal',
       label: provision.reference,
       text: clip(provision.text),
+      quote: clipQuote(provision.text),
       sourceUrl: provision.sourceUrl,
       verifiedAt: provision.fuenteVerificadaEn,
     });
   }
   for (const update of input.updates.slice(0, MAX_UPDATE_SOURCES)) {
     drafts.push({
-      kind: 'update',
+      kind: update.kind === 'news' ? 'news' : 'update',
       label: update.title,
       text: describeUpdate(update),
+      quote: clipQuote(update.title),
       sourceUrl: update.sourceUrl,
-      verifiedAt: update.detectedAt.slice(0, ISO_DATE_LENGTH),
     });
   }
 
