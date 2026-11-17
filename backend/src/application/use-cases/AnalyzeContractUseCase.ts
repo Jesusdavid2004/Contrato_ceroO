@@ -41,6 +41,11 @@ export interface AnalyzeContractInput {
   /** Llave de staging (`staging:<contractId>`); sobrevive reinicios con TTL. */
   stagingKey?: string;
   mimeType: string;
+  /**
+   * False while the job queue will retry: the staged file must survive so the
+   * retry can read it. Omitted means a single attempt, so it is removed.
+   */
+  finalAttempt?: boolean;
 }
 
 export class AnalyzeContractUseCase {
@@ -217,7 +222,7 @@ export class AnalyzeContractUseCase {
         type: 'failed',
         payload: { status: 'FAILED', failureMessageKey: contract.failureReason },
       });
-      await this.cleanupStaging(input.stagingKey);
+      if (input.finalAttempt !== false) await this.cleanupStaging(input.stagingKey);
       throw error;
     }
   }

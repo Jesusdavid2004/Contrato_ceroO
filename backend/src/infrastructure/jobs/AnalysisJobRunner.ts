@@ -6,6 +6,8 @@ import { ContractNotFoundError } from '../../domain/exceptions/index';
 import { DomainError } from '../../domain/exceptions/DomainError';
 import { logger } from '../../shared/logger';
 
+const DEFAULT_MAX_ATTEMPTS = 3;
+
 export type JobRunOutcome = 'idle' | 'done' | 'retried' | 'failed' | 'cancelled';
 
 function backoffMs(attempts: number): number {
@@ -69,12 +71,14 @@ export class AnalysisJobRunner {
       return 'cancelled';
     }
 
+    const maxAttempts = job.maxAttempts > 0 ? job.maxAttempts : DEFAULT_MAX_ATTEMPTS;
     try {
       await this.analyze({
         contractId: job.contractId,
         userId: job.userId,
         stagingKey: job.stagingKey,
         mimeType: job.mimeType,
+        finalAttempt: job.attempts + 1 >= maxAttempts,
       });
       await this.queue.complete(job.id);
       return 'done';
@@ -84,7 +88,6 @@ export class AnalysisJobRunner {
         return 'cancelled';
       }
       const attempts = job.attempts + 1;
-      const maxAttempts = job.maxAttempts > 0 ? job.maxAttempts : 3;
       const errorKey = error instanceof DomainError ? error.messageKey : 'errors.analysis_failed';
       if (attempts >= maxAttempts) {
         await this.queue.fail(job.id, errorKey, null);

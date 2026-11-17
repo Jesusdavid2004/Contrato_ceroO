@@ -64,6 +64,32 @@ describe('AnalysisJobRunner', () => {
     expect(calls).toBe(3);
   });
 
+  it('marks only the last attempt as final so retries keep the staged file', async () => {
+    const queue = new InMemoryAnalysisJobQueue();
+    const contracts = new InMemoryContractRepository();
+    await contracts.save(leaseContract());
+    let now = new Date();
+    const finalFlags: Array<boolean | undefined> = [];
+    const runner = new AnalysisJobRunner(
+      queue,
+      contracts,
+      async (input) => {
+        finalFlags.push(input.finalAttempt);
+        throw new Error('transient');
+      },
+      { ownerId: 'w-test', clock: () => now },
+    );
+    await queue.enqueue({ contractId: 'contract-run-1', userId: 'user-1', stagingKey: 'k', mimeType: 'application/pdf' });
+
+    await runner.runOnce();
+    now = new Date(now.getTime() + 6_000);
+    await runner.runOnce();
+    now = new Date(now.getTime() + 11_000);
+    await runner.runOnce();
+
+    expect(finalFlags).toEqual([false, false, true]);
+  });
+
   it('cancela sin resucitar cuando el contrato fue borrado', async () => {
     const queue = new InMemoryAnalysisJobQueue();
     const contracts = new InMemoryContractRepository();
